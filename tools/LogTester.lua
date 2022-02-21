@@ -4,161 +4,155 @@ local T = { Name = "LogTester" };
 -- /dump CovenantMissionFrame.MissionTab.MissionPage.Board.framesByBoardIndex[0].autoCombatSpells
 -- /dump CovenantMissionFrame.MissionTab.MissionPage.Board.framesByBoardIndex[2].name
 
+_G.bit = loadfile('libs/bit.lua')();
 
 -- Init like wow addons
 print('Start loading simulator...');
 
-local VM = "CovenantMissionRobot/VM/";
+loadfile('CovenantMissionRobot/VM/TargetManager.lua')(T.Name, T);
+loadfile('CovenantMissionRobot/VM/GarrAutoSpell.g.lua')(T.Name, T);
+loadfile('CovenantMissionRobot/VM/GarrAutoSpell.fix.lua')(T.Name, T);
+loadfile('CovenantMissionRobot/VM/GarrAutoBoard.lua')(T.Name, T);
 
-loadfile(VM..'TargetManager.lua')(T.Name, T);
-loadfile(VM..'GarrAutoSpell.g.lua')(T.Name, T);
-loadfile(VM..'GarrAutoSpell.fix.lua')(T.Name, T);
-loadfile(VM..'GarrAutoBoard.lua')(T.Name, T);
+loadfile('VenturePlan/vs-spells.lua')(T.Name, T);
+loadfile('VenturePlan/vs.lua')(T.Name, T);
 
-loadfile("Logs/VenturePlan_001.lua")(T.Name, T);
+loadfile("Logs/VenturePlan_000.lua")(T.Name, T);
 
 print('Simulator has bin loaded!');
 
 T.ApplySpellFixes();
 
+local generateCheckpoints do
+	local hex = {}
+	for i = 0, 12 do
+        hex[i] = ("%x"):format(i)
+    end
+
+	local function checkpointBoard(b)
+		local r = ""
+		for i = 0, 12 do
+			local lh = b[i] or 0
+			if lh > 0 then
+				r = (r ~= "" and r .. "_" or "") .. hex[i] .. ":" .. lh
+			end
+		end
+		return r
+	end
+
+	function generateCheckpoints(cr)
+		local eei = cr.environment
+		local envs = eei and eei.autoCombatSpellInfo
+		local checkpoints, b = {}, {[-1] = envs and true or nil}
+		for i = 1, #cr.encounters do
+			local e = cr.encounters[i]
+			b[e.boardIndex] = e.health
+		end
+
+		for _, v in pairs(cr.followers) do
+			b[v.boardIndex] = v.health
+		end
+
+		checkpoints[0] = checkpointBoard(b);
+		for t = 1, #cr.log do
+			local e = cr.log[t].events
+			for i = 1, #e do
+				local ti = e[i].targetInfo
+				local cidx = e[i].casterBoardIndex
+				if not b[cidx] then
+					return false
+				end
+				for i = 1, ti and #ti or 0 do
+					local tii = ti[i]
+					local tidx = tii.boardIndex
+					if not b[tidx] then
+						return false
+					elseif tii.newHealth then
+						b[tidx] = tii.newHealth
+					end
+				end
+			end
+			checkpoints[t] = checkpointBoard(b)
+		end
+
+		if checkpoints[#checkpoints] == checkpoints[#checkpoints-1] then
+			checkpoints[#checkpoints] = nil
+		end
+
+		return true, checkpoints
+	end
+end
+
+local function PrepareCMR(missionLog)
+    local env = nil
+    if missionLog.environment and missionLog.environment.autoCombatSpellInfo then
+        env = {
+            SpellID = missionLog.environment.autoCombatSpellInfo.autoCombatSpellID,
+            SpellName = missionLog.environment.autoCombatSpellInfo.name,
+            EnvironmentName = missionLog.environment.name
+        };
+    end
+
+    local units = { };
+    for e, follower in pairs(missionLog.followers) do
+        follower.followerGUID = e;
+        follower.autoCombatSpells = follower.spells;
+        table.insert(units, follower);
+    end
+
+    for _, encounter in ipairs(missionLog.encounters) do
+        table.insert(units, encounter);
+    end
+
+    local board = T.GarrAutoBoard:New(missionLog, units, env);
+    board.LogEnabled = true;
+    return board;
+end
+
+local function PrepareVP(missionLog)
+    local envSpell = missionLog.environment
+        and missionLog.environment.autoCombatSpellInfo;
+
+    local sim = T.VSim:New(
+        missionLog.followers,
+        missionLog.encounters,
+        envSpell,
+        missionLog.missionID,
+        missionLog.missionScalar,
+        0);
+
+    sim:AddFightLogOracles(missionLog.log);
+    return sim;
+end
+
 for i, missionLog in ipairs(VP_MissionReports) do
-    local id = tostring(missionLog.id);
-    --print("LogID", id);
-    --if  i < 5 then
-    if missionLog.id == '16424213240007' then
+    if i < 400 then
+    --if missionLog.id == '16424213240007' then
         print("");
-        print("LogID", id);
-        -- autoCombatSpellID, cooldown, duration, hasThornsEffect, name
-        local env = nil
-        if missionLog.environment and missionLog.environment.autoCombatSpellInfo then
-            env = {
-                SpellID = missionLog.environment.autoCombatSpellInfo.autoCombatSpellID,
-                SpellName = missionLog.environment.autoCombatSpellInfo.name,
-                EnvironmentName = missionLog.environment.name
-            };
-        end
+        print("LogID: "..missionLog.id);
 
-        local units = { };
-        for e, follower in pairs(missionLog.followers) do
-            follower.followerGUID = e;
-            follower.autoCombatSpells = follower.spells;
-            table.insert(units, follower);
-        end
+        local _, baseCheckpoints = generateCheckpoints(missionLog);
 
-        for e, encounter in ipairs(missionLog.encounters) do
-            table.insert(units, encounter);
-        end
+        local cmr = PrepareCMR(missionLog);
+        local vp = PrepareVP(missionLog);
 
-        local board = T.GarrAutoBoard:New(missionLog, units, env);
+        print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
 
-        print("HasRandom: "..(board.HasRandom and "YES" or "NO"))
+        cmr:Run();
+        vp:Run();
 
-        local ii = 1;
-        board.OnEvent = function(round, event, spell, effectType, boardIndex, targetInfo)
 
-            --targetInfo = false
-            if targetInfo then
-                for ti, v in ipairs(targetInfo) do
+        for r = 1, math.max(#cmr.Checkpoints, #vp.checkpoints, #baseCheckpoints) do
+            local l1 = cmr.Checkpoints[r];
+            local l2 = vp.checkpoints[r];
+            local l3 = baseCheckpoints[r];
 
-                    local eventInfo = missionLog.log[round] and missionLog.log[round].events[event] or {};
-                    local li = eventInfo and eventInfo.targetInfo and eventInfo.targetInfo[ti] or {};
-
-                    local casterIs = eventInfo.casterBoardIndex == boardIndex;
-                    local targetIs = li.boardIndex == v.BoardIndex;
-                    local pointsIs = (li.points or 0) == (v.Points or 0);
-                    local spellIs = eventInfo.spellId == spell.SpellID;
-
-                    local ss = "";
-                    if not casterIs then
-                        ss = ss..string.format(" caster: %i/%i ", boardIndex, eventInfo.casterBoardIndex or -2);
-                    end
-                    if not targetIs then
-                        ss = ss..string.format(" target: %i/%i ", v.BoardIndex, li.boardIndex or -2);
-                    end
-
-                    local pp = "";
-                    if not pointsIs then
-                        --pp = pp..string.format(" Points: %i/%i ", v.Points or 0, li.points or 0);
-                    end
-
-                    if ss ~= "" then
-                        ss = "  WARN "..ss;
-                    end
-
-                    if pp ~= "" then
-                        pp = "  WARN "..pp;
-                    end
-
-                    local target = board.Units[v.BoardIndex];
-                    local source = board.Units[boardIndex] or board.Environment;
-                    if (effectType == "Died") then
-                        print(string.format("%03i Round: %02i, Event: %02i, [%i] %s ---> Died! %s", ii, round, event, v.BoardIndex,target.Name, ss));
-                    elseif (effectType == "RemoveAura") then
-                        print(string.format("%03i Round: %02i, Event: %02i, [%i] %s ---> RemoveAura [%i] %s from [%i] %s  %s",
-                        ii, round, event,
-                        boardIndex, source and source.Name or "<none>",
-                        spell.SpellID, spell.Name,
-                        v.BoardIndex, target and target.Name or "<none>",
-                        ss));
-                    else
-                        print(string.format(
-                            "%03i Round: %02i, Event: %02i, [%i] %s => [%i] %s ---> [%i] %s (%d = %d + %d) %s %s",
-                            ii, round, event,
-                            boardIndex,
-                            source and source.Name or "<none>",
-                            spell.SpellID,
-                            spell.Name,
-                            v.BoardIndex,
-                            target and target.Name or "<none>",
-                            v.OldHealth,
-                            v.NewHealth,
-                            v.Points,
-                            ss, pp
-                        ));
-                    end
-                    ii = ii +  1
-                end
-            end
-
-            local roundInfo = missionLog.log[round];
-            roundInfo = false
-            if roundInfo then
-                local eventInfo = roundInfo.events[event];
-                if eventInfo then
-                    local sid = spell.SpellID;
-                    local c1 = board.Units[boardIndex];
-                    local c2 = board.Units[eventInfo.casterBoardIndex];
-                    local hl = string.format("Health: [%i]%i / [%i]%i", boardIndex, c1 and c1.CurHP or 0, eventInfo.casterBoardIndex, c2 and c2.CurHP or 0);
-                    print(string.format(
-                        "%03i Round: %02i, Event: %02i, Caster: %i-%i, Spell: %i-%i %s",
-                        ii, round, event,
-                        boardIndex, eventInfo.casterBoardIndex,
-                        sid, eventInfo.spellID,
-                        (boardIndex==eventInfo.casterBoardIndex and sid==eventInfo.spellID) and "" or (" ===>> warn "..hl)
-                    ));
-                    ii = ii + 1;
-                end
-            end
-            -- print("Event", spellId, effectType, boardIndex, targetInfo);
-            --ii = ii + 1;
-        end;
-        board.OnLog = function(msg, level)
-            --print("Log", msg);
-        end;
-
-        board:Run();
-
-        --board.IsWin
-
-        for u = 0, 12 do
-            local uu = board.Units[u];
-            if uu then
-                print(string.format("%02i %s %i/%i => %i",
-                    u, uu.Name, uu.MaxHP, uu.StartHP, uu.CurHP))
+            if l1 == l2 and l1 == l3 then
+                print(r, l1)
+            else
+                print(r, l1, l2, l3);
             end
         end
-
-        --break;
     end
 end
 

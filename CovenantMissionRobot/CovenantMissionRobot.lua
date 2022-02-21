@@ -1,6 +1,6 @@
 local _, T = ...;
 
-local Robot = CreateFrame(...);
+local Robot = CreateFrame("Frame");
 
 Robot:RegisterEvent("ADDON_LOADED");
 Robot:SetScript("OnEvent",

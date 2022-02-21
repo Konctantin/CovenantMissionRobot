@@ -329,26 +329,48 @@ local GarrAutoBoard = {
     MissionID        = 0,
     MissionScalar    = 0,
     MissionName      = "",
-    Units            = { },
+    Board            = { },
+    Checkpoints      = { },
+    Log              = { },
+    LogEnabled       = false,
     Environment      = nil,
     HasRandomSpells  = false,
     IsOver           = false,
-    OnEvent          = nil,
-    OnLog            = nil,
+    IsWin            = false,
     Round            = 0,
     Event            = 0,
 };
 
-function GarrAutoBoard:Log(msg, level)
-    if self.OnLog then
-        self.OnLog(msg, level);
-    end
-end
-
 function GarrAutoBoard:AddEvent(spell, effectType, boardIndex, targetInfo)
-    if self.OnEvent then
-        self.OnEvent(self.Round, self.Event, spell, effectType, boardIndex, targetInfo);
+    if self.LogEnabled then
+        local event = {
+            casterBoardIndex = boardIndex,
+            type = 0,
+            schoolMask = 0,
+            effectIndex = 0,
+            auraType = 0,
+            targetInfo = {},
+        };
+
+        for _, t in ipairs(targetInfo) do
+            local ti = {
+                boardIndex = t.BoardIndex,
+                maxHealth = 0,
+                oldHealth = 0,
+                newHealth = 0,
+                points = t.Points,
+            };
+            table.insert(event.targetInfo, ti);
+        end
+
+        if not self.Log[self.Round] then
+            table.insert(self.Log, { events = {} })
+        end
+
+        local round = self.Log[self.Round];
+        table.insert(round.events, event);
     end
+
     self.Event = self.Event + 1;
 end
 
@@ -357,8 +379,13 @@ function GarrAutoBoard:New(mission, unitList, environment)
         MissionID = mission.missionID,
         MissionName = mission.missionName,
         MissionScalar = mission.missionScalar,
-        Units = { },
+        Board = { },
+        Checkpoints = { },
+        Log = { },
+        LogEnabled = false,
         Environment = nil,
+        IsOver = false,
+        IsWin = false,
         Round = 1,
         Event = 1
     };
@@ -370,7 +397,7 @@ function GarrAutoBoard:New(mission, unitList, environment)
 
     for _, unit in ipairs(unitList) do
         local unitObj = GarrAutoCobatant:New(unit, mission.missionID);
-        obj.Units[unitObj.BoardIndex] = unitObj;
+        obj.Board[unitObj.BoardIndex] = unitObj;
 
         for _, spell in ipairs(unitObj.Spells) do
             if spell.HasRandom then
@@ -410,7 +437,7 @@ end
 
 function GarrAutoBoard:IsTargetableUnit(sourceIndex, targetIndex)
     return self:IsUnitAlive(targetIndex)
-        and (not self.Units[targetIndex].Untargetable or IsFriendlyUnit(sourceIndex, targetIndex));
+        and (not self.Board[targetIndex].Untargetable or IsFriendlyUnit(sourceIndex, targetIndex));
 end
 
 function GarrAutoBoard:GetTargetableUnits(sourceIndex)
@@ -424,7 +451,7 @@ function GarrAutoBoard:GetTargetableUnits(sourceIndex)
 end
 
 function GarrAutoBoard:IsUnitAlive(boardIndex)
-    local unit = self.Units[boardIndex];
+    local unit = self.Board[boardIndex];
     return unit and unit:IsAlive() or false;
 end
 
@@ -445,6 +472,7 @@ function GarrAutoBoard:CheckMissionOver()
         end
     end
 
+    self.IsWin = isMyTeamAlive and not isEnemyTeamAlive;
     return not (isMyTeamAlive and isEnemyTeamAlive);
 end
 
@@ -453,12 +481,11 @@ function GarrAutoBoard:GetTurnOrder()
     local sort_table = { };
 
     for i = 0, 12 do
-        local unit = self.Units[i];
+        local unit = self.Board[i];
         if unit then
             local ord = { BoardIndex = unit.BoardIndex,
                 Ord = (i < 5 and 1e9 or 2e9) - unit.CurHP * 1e3 + i + 20 * (unit.DeathSeq or 0)
             };
-            --print(unit.BoardIndex, ord.Ord)
             table.insert(sort_table, ord);
         end
     end
@@ -480,7 +507,7 @@ function GarrAutoBoard:ManageAppliedAura(sourceUnit)
             local removed_buffs = { };
 
             for u = 0, 12 do
-                local unit = self.Units[u];
+                local unit = self.Board[u];
                 if unit and unit:IsAlive() then
                     local buffs = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
                     for _, buff in ipairs(buffs) do
@@ -699,7 +726,7 @@ function GarrAutoBoard:PrepareCast(sourceUnit, targets, spell, effect)
     if #spell.Effects == 1 and effect.IsHeal then
         local needHeal = false;
         for _, targetIndex in ipairs(targets) do
-            local u = self.Units[targetIndex];
+            local u = self.Board[targetIndex];
             if u and u.CurHP < u.MaxHP then
                 needHeal = true;
             end
@@ -712,7 +739,7 @@ function GarrAutoBoard:PrepareCast(sourceUnit, targets, spell, effect)
 end
 
 function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
-    local targetUnit = self.Units[eventTargetInfo.BoardIndex];
+    local targetUnit = self.Board[eventTargetInfo.BoardIndex];
     -- check reflect only damage effect
     if effect.IsDamage then
         if targetUnit and targetUnit.Reflect > 0 then
@@ -737,7 +764,7 @@ function GarrAutoBoard:OnDie(sourceUnit, targetUnit, spell, eventTargetInfo)
     -- clear taunt and calc died order
     local diedOrder = 0;
     for i = 0, 12 do
-        local unit = self.Units[i];
+        local unit = self.Board[i];
         if unit then
             if unit.TauntedBy == sourceUnit.BoardIndex then
                 unit.TauntedBy = nil;
@@ -770,7 +797,7 @@ function GarrAutoBoard:ApplyPassiveAura(sourceUnit)
             local targetInfo = { };
             local targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, -1);
             for _, targetIndex in ipairs(targetIndexes) do
-                local targetUnit = self.Units[targetIndex];
+                local targetUnit = self.Board[targetIndex];
                 local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, sourceUnit.PassiveSpell, effect, false);
                 table.insert(targetInfo, eventTargetInfo);
             end
@@ -807,18 +834,15 @@ function GarrAutoBoard:MakeAction(sourceUnit)
             break;
         end
 
-        self:Log(string.format("[%i] %s (%i)", spell.SpellID, spell.Name, #spell.Effects), LL_INFO);
-
         lastTargetType = -1
         for _, effect in ipairs(spell.Effects) do
             targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, lastTargetType, targetIndexes);
-            self:Log("Effect: " .. effect.Effect .. ', TargetType: ' .. effect.TargetType, LL_DEBUG)
 
             local needCast = self:PrepareCast(sourceUnit, targetIndexes, spell, effect);
             if needCast then
                 local targetInfo = { };
                 for _, targetIndex in ipairs(targetIndexes) do
-                    local targetUnit = self.Units[targetIndex];
+                    local targetUnit = self.Board[targetIndex];
                     local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
                     table.insert(targetInfo, eventTargetInfo);
                 end
@@ -843,12 +867,10 @@ end
 function GarrAutoBoard:Step()
     self.Event = 1;
     local turnOrder = self:GetTurnOrder();
-    print(table.concat(turnOrder, ","))
 
     for _, boardIndex in ipairs(turnOrder) do
-        local unit = self.Units[boardIndex];
+        local unit = self.Board[boardIndex];
         if unit then
-            self:Log(string.format("[%i] %s", unit.BoardIndex, unit.Name));
             self:MakeAction(unit);
         end
     end
@@ -856,12 +878,19 @@ function GarrAutoBoard:Step()
     if self.Environment then
         self:MakeAction(self.Environment);
     end
+
+    local checkpoint = {};
+    for i = 0, 12 do
+        local unit = self.Board[i];
+        if unit and unit:IsAlive() then
+            table.insert(checkpoint, string.format("%x:%d", i, unit.CurHP));
+        end
+    end
+    table.insert(self.Checkpoints, table.concat(checkpoint, "_"));
 end
 
 function GarrAutoBoard:Run()
     while not self.IsOver and self.Round < MAX_ROUNDS do
-        self:Log("");
-        self:Log(" >>> Round: "..self.Round, LL_INFO);
         self:Step();
         self.Round = self.Round + 1;
     end
