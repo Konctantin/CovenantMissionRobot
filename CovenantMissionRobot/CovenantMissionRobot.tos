@@ -1,0 +1,17 @@
+## Interface: 90200
+## Title: Covenant Mission Robot
+## Author: Konstatin
+## Version: 1.0.1
+## RequiredDep: Blizzard_GarrisonTemplates
+## SavedVariables: CMR_DB
+
+VM/TargetManager.lua
+VM/GarrAutoSpell.g.lua
+VM/GarrAutoSpell.fix.lua
+VM/GarrAutoBoard.lua
+
+UI/UI.xml
+UI/UI.lua
+UI/MissionHelperFrame.xml
+
+CovenantMissionRobot.lua
