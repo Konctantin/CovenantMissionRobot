@@ -95,14 +95,14 @@ DROP TABLE IF EXISTS [wow].[dbo].[GarrAutoSpell];
 GO
 
 CREATE TABLE [wow].[dbo].[GarrAutoSpell] (
-	[ID]               int primary key,
-	[Name_lang]        varchar(100) null,
-	[Description_lang] varchar(1000) null,
-	[Cooldown]         int not null,
-	[Duration]         int not null,
-	[Flags]            int not null, -- 1-No initial cast
-	[SchoolMask]       int not null, -- 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
-	[IconFileDataID]   int not null
+    [ID]               int primary key,
+    [Name_lang]        varchar(100) null,
+    [Description_lang] varchar(1000) null,
+    [Cooldown]         int not null,
+    [Duration]         int not null,
+    [Flags]            int not null, -- 1-No initial cast
+    [SchoolMask]       int not null, -- 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
+    [IconFileDataID]   int not null
 );
 GO
 
@@ -110,14 +110,14 @@ DROP TABLE IF EXISTS [wow].[dbo].[GarrAutoSpellEffect];
 GO
 
 CREATE TABLE [wow].[dbo].[GarrAutoSpellEffect] (
-	[ID]          int primary key,
-	[SpellID]     int not null,
-	[EffectIndex] int not null,
-	[Effect]      int not null, -- [wow].[dbo].[SpellEffectTypes]
-	[Points]      float not null,
-	[TargetType]  int not null, -- [wow].[dbo].[TargetTypes]
-	[Flags]       int not null, -- 1-Use attack for points, 2-Extra inital period
-	[Period]      int not null
+    [ID]          int primary key,
+    [SpellID]     int not null,
+    [EffectIndex] int not null,
+    [Effect]      int not null, -- [wow].[dbo].[SpellEffectTypes]
+    [Points]      float not null,
+    [TargetType]  int not null, -- [wow].[dbo].[TargetTypes]
+    [Flags]       int not null, -- 1-Use attack for points, 2-Extra inital period
+    [Period]      int not null
 );
 GO
 """

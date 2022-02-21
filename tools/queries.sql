@@ -26,7 +26,7 @@ select * from [wow].[dbo].[MissionLogEventTarget] where ID = 16423611420003
 select * from wow.dbo.GarrMission where GarrTypeID = 111 and AutoCombatantEnvCasterID > 0;
 select * from wow.dbo.GarrAutoCombatant where id = 212;
 
-select [FileName], count(*) as [Count] from [wow].[dbo].[MissionLog] group by [FileName] 
+select [FileName], count(*) as [Count] from [wow].[dbo].[MissionLog] group by [FileName]
 union all select 'Total', count(*) as [Count] from [wow].[dbo].[MissionLog]
 order by [FileName];
 
@@ -78,9 +78,9 @@ group by Effect
 order by Effect
 
 -- Spell Info
-select 
+select
     SpellId, EffectIndex, gase.ID as [EffectID], Period, Points, Cooldown, Duration,
-    gase.Flags as [SpellFlags], case gase.Flags when 1 then 'Use attack for points' when 2 then 'Extra inital period' when 3 then 'All' end [EffectFlagsName], 
+    gase.Flags as [SpellFlags], case gase.Flags when 1 then 'Use attack for points' when 2 then 'Extra inital period' when 3 then 'All' end [EffectFlagsName],
     gas.Flags as [EffectFlags], case when gas.Flags = 1 then 'yes' end [StartCooldown],
     Effect, (select top 1 [Name] from [wow].[dbo].[SpellEffectTypes] where id = Effect) as [EffectName],
     TargetType, (select top 1 [Name] from [wow].[dbo].[TargetTypes] where id = TargetType) as [TargetTypeName],
@@ -135,13 +135,13 @@ select * from wow.dbo.MissionLogUnit where id = 16423565350002
 select top 1000 mle.[Round], mle.[Event]
     , mle.EffectIndex as [EI]
     , '['+cast(se.Effect as varchar)+'] '+isnull((select top 1 [Name] from wow.dbo.SpellEffectTypes where id = se.Effect), '<none>') as [Effect]
-    , '['+cast(se.TargetType as varchar)+'] '+isnull((select top 1 [Name] from wow.dbo.TargetTypes where id = se.TargetType), '<none>') as [TargetType]    
+    , '['+cast(se.TargetType as varchar)+'] '+isnull((select top 1 [Name] from wow.dbo.TargetTypes where id = se.TargetType), '<none>') as [TargetType]
     , case mle.EventType when 0 then 'MeleeDamage' when 1 then 'RangeDamage' when 2 then 'SpellMeleeDamage' when 3 then 'SpellRangeDamage' when 4 then 'Heal' when 5 then 'PeriodicDamage' when 6 then 'PeriodicHeal' when 7 then 'ApplyAura' when 8 then 'RemoveAura' when 9 then '--Died--' end as [EventType]
     , mle.AuraType
     --, mle.SchoolMask
-    , '['+cast(mle.CasterBoardIndex as varchar)+'] '+isnull((select top 1 [Name] from [wow].[dbo].[MissionLogUnit] where ID = mle.ID and BoardIndex = mle.CasterBoardIndex), '<none>') as [Caster]     
+    , '['+cast(mle.CasterBoardIndex as varchar)+'] '+isnull((select top 1 [Name] from [wow].[dbo].[MissionLogUnit] where ID = mle.ID and BoardIndex = mle.CasterBoardIndex), '<none>') as [Caster]
     , '['+cast(mle.SpellId as varchar)+'] '+isnull((select top 1 [Name_lang] from [wow].[dbo].[GarrAutoSpell] where ID = mle.SpellId), '<none>') as [Spell]
-    , '['+cast(mlet.BoardIndex as varchar)+'] '+isnull((select top 1 [Name] from [wow].[dbo].[MissionLogUnit] where ID = mle.ID and BoardIndex = mlet.BoardIndex), '<none>') as [Target]    
+    , '['+cast(mlet.BoardIndex as varchar)+'] '+isnull((select top 1 [Name] from [wow].[dbo].[MissionLogUnit] where ID = mle.ID and BoardIndex = mlet.BoardIndex), '<none>') as [Target]
     , mlet.OldHealth, mlet.NewHealth, mlet.Points, mlet.MaxHealth
     , mle.ID
 from [wow].[dbo].[MissionLogEvent] mle
@@ -157,8 +157,8 @@ SELECT
     mlu.BoardIndex, mlu.Name,
     mlu.MaxHealth, mlu.Health,
     isnull(
-    (select top 1 t.NewHealth from wow.dbo.MissionLogEventTarget t 
-    where t.ID = mlu.id and t.BoardIndex = mlu.BoardIndex 
+    (select top 1 t.NewHealth from wow.dbo.MissionLogEventTarget t
+    where t.ID = mlu.id and t.BoardIndex = mlu.BoardIndex
     order by [Round] desc, [Event] desc, [Index] desc)
     , mlu.Health) as CurrentHP
 from wow.dbo.MissionLogUnit mlu
@@ -169,11 +169,11 @@ select * from wow.dbo.MissionLogEventTarget t where t.ID = 16423565370004 and t.
 select * from wow.dbo.MissionLog where id = 16424253600001
 select * from wow.dbo.MissionLogEnvironment where MissionId = 2253
 select * from wow.dbo.MissionLogUnit where id = 16424253600001
-select top 10 * from wow.dbo.MissionLogEvent where CasterBoardIndex = -1 
+select top 10 * from wow.dbo.MissionLogEvent where CasterBoardIndex = -1
 
 -- AutoAttack for encounters
 select '['+right('0'+cast(gme.BoardIndex as varchar),2) + '] = { ' + string_agg('['+cast(gme.GarrMissionID as varchar), ']=M,')+ ']=M },'
-from wow.dbo.GarrMissionXEncounter gme 
+from wow.dbo.GarrMissionXEncounter gme
 join wow.dbo.GarrEncounter ge on ge.ID = gme.GarrEncounterID
 join wow.dbo.GarrAutoCombatant gac on gac.id = ge.AutoCombatantID
 where gac.AttackSpellID = 11 and gac.Role in (0,2,3,4)
@@ -199,7 +199,7 @@ order by CasterBoardIndex, mlet.BoardIndex
 
 -- Broken spells
 declare @s table(id int)
-insert into @s select distinct spellid from wow.dbo.MissionLogEvent 
+insert into @s select distinct spellid from wow.dbo.MissionLogEvent
 select spellid, count(*) from wow.dbo.MissionLogUnitSpell where spellid not in (select id from @s) group by spellid order by SpellId
 
 -- 2307

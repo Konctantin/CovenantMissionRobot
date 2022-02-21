@@ -41,7 +41,7 @@ CREATE TABLE [wow].[dbo].[MissionLogUnit] (
     [Health]      smallint     not null,
     [MaxHP]   smallint     not null, -- only slaves
     [IsElite]     tinyint      not null, -- only enemies
-	[Level]       tinyint      not null, -- only slaves
+    [Level]       tinyint      not null, -- only slaves
     [Role]        tinyint      not null,
     [Name]        varchar(200) not null,
     CONSTRAINT PK_MissionLogUnit PRIMARY KEY NONCLUSTERED ([ID], [BoardIndex])

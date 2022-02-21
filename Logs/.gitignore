@@ -1,2 +1,4 @@
 MissionLogs_*.sql
 VenturePlan_*.lua
+
+!VenturePlan_000.lua
