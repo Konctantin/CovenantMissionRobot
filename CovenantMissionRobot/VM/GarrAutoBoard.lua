@@ -132,10 +132,11 @@ end
 function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targetInfo)
     if self.LogEnabled then
         local event = {
+            spellID = spell.SpellID,
             casterBoardIndex = casterBoardIndex,
-            type = 0,
+            type = eventType,
             schoolMask = spell.SchoolMask,
-            effectIndex = 0,
+            effectIndex = effect.EffectIndex,
             auraType = 0, -- ???
             targetInfo = targetInfo,
         };

@@ -11,10 +11,10 @@ import os
 curDir = os.path.dirname(__file__)
 
 # ID,SpellID,EffectIndex,Effect,Points,TargetType,Flags,Period
-garrautospelleffect = curDir + '\\garrautospelleffect.csv'
+garrautospelleffect = os.path.relpath(curDir + '\\..\\wow_csv\\garrautospelleffect.csv')
 
 # ID,Name_lang,Description_lang,Cooldown,Duration,Flags,SchoolMask,IconFileDataID
-garrautospell = curDir + '\\garrautospell.csv'
+garrautospell = os.path.relpath(curDir + '\\..\\wow_csv\\garrautospell.csv')
 
 spellTable = os.path.relpath(curDir + '\\..\\CovenantMissionRobot\\VM\\GarrAutoSpell.g.lua')
 
@@ -101,7 +101,7 @@ with open(spellTable, "w") as f:
                 f.write(", Cooldown = " + spell['Cooldown'])
                 f.write(", Duration = " + spell['Duration'])
                 f.write(", Flags = " + spell['Flags']) 
-                f.write(", SchoolMask = " + "0x{:02x}".format(int(spell['SchoolMask']))) 
+                f.write(", SchoolMask = " + "0x{:02x}".format(int(spell['SchoolMask'])))
                 #f.write(", IconFileDataID = " + spell['IconFileDataID'])
                 f.write(", Effects = {\n")
 
@@ -113,6 +113,7 @@ with open(spellTable, "w") as f:
                         #f.write("[" + effect['EffectIndex'] + "] = ")
                         f.write("{ ID = " + format(int(effect['ID']), '03'))
                         f.write(", SpellID = " + format(int(spell['ID']), '03'))
+                        f.write(", EffectIndex = " + effect['EffectIndex'])
                         f.write(", Effect = " + format(int(effect['Effect']), '02'))
                         f.write(", TargetType = " + format(int(effect['TargetType']), '02'))
                         f.write(", Flags = " + "0x{:02x}".format(int(effect['Flags']))) 

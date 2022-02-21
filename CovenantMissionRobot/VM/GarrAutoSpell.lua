@@ -98,4 +98,3 @@ end
 
 T.GarrAutoSpell = GarrAutoSpell;
 T.GarrAutoBuff  = GarrAutoBuff;
---T.GetBlizzardEventType = GetBlizzardEventType;

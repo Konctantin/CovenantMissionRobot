@@ -28,7 +28,7 @@ print('Simulator has bin loaded!');
 T.ApplySpellFixes();
 
 for i, missionLog in ipairs(VP_MissionReports) do
-    if i < 5 then
+    if i < 2 then
     --if missionLog.id == '16424213240007' then
         print("");
         print("LogID: "..missionLog.id);
@@ -36,23 +36,24 @@ for i, missionLog in ipairs(VP_MissionReports) do
         local _, baseCheckpoints = T.GenerateCheckpoints(missionLog);
 
         local cmr = T.PrepareCMR(missionLog);
-        local vp = T.PrepareVP(missionLog);
+        --local vp = T.PrepareVP(missionLog);
 
         print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
 
         cmr:Run();
-        vp:Run();
 
+        T.PrintComparedLogs(cmr.Log, missionLog.log);
+        --vp:Run();
 
-        for r = 0, math.max(#cmr.Checkpoints, #vp.checkpoints, #baseCheckpoints) do
+        for r = 0, math.max(#cmr.Checkpoints, #baseCheckpoints) do
             local l1 = cmr.Checkpoints[r];
-            local l2 = vp.checkpoints[r];
+            --local l2 = vp.checkpoints[r];
             local l3 = baseCheckpoints[r];
 
-            if l1 == l2 and l1 == l3 then
+            if l1 == l3 then
                 print(r, l1, "==> OK!");
             else
-                print(r, l1, l2, l3);
+                print(r, l1, l3);
             end
         end
     end
