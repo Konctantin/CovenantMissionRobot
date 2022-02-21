@@ -1,5 +1,7 @@
 local _, T = ...;
 
+function CreateFrame(...) end
+
 local Robot = CreateFrame("Frame");
 
 Robot:RegisterEvent("ADDON_LOADED");

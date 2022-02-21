@@ -4,38 +4,32 @@ local MAX_ROUNDS = 100;
 local RANDOM_SIMULATIONS = 100;
 local LL_INFO, LL_ERROR, LL_DEBUG  = 1, 2, 3;
 
-local passiveSpells = { [47]=1, [82]=1, [90]=1, [105]=1, [109]=1 };
+local ET_MeleeDamage = 0;
+local ET_RangeDamage = 1;
+local ET_SpellMeleeDamage = 2;
+local ET_SpellRangeDamage = 3;
+local ET_Heal = 4;
+local ET_PeriodicDamage = 5;
+local ET_PeriodicHeal = 6;
+local ET_ApplyAura = 7;
+local ET_RemoveAura = 8;
+local ET_Died = 9;
 
-local GetAutoAttackSpellId do
-    local M, R = 11, 15;
-    local enemies = {
-        -- [boardIndex] = {[missionId]=R (range spell id)}
-        [05] = { [2172]=M,[2176]=M,[2196]=M,[2207]=M,[2209]=M,[2202]=M,[2214]=M,[2312]=M,[2304]=M },
-        [06] = { [2304]=M,[2305]=M,[2311]=M,[2314]=M,[2315]=M,[2316]=M,[2317]=M,[2260]=M,[2209]=M,[2213]=M,[2176]=M,[2196]=M,[2207]=M,[2169]=M },
-        [07] = { [2169]=M,[2172]=M,[2176]=M,[2196]=M,[2209]=M,[2207]=M,[2260]=M,[2305]=M,[2304]=M },
-        [08] = { [2305]=M,[2304]=M,[2214]=M,[2207]=M,[2209]=M,[2196]=M,[2176]=M,[2172]=M },
-        [09] = { [2204]=M,[2208]=M,[2239]=M,[2212]=M,[2252]=M,[2293]=M,[2298]=M,[2313]=M,[2259]=M,[2301]=M,[2307]=M,[2304]=M,[2303]=M },
-        [10] = { [2304]=M,[2307]=M,[2303]=M,[2298]=M,[2252]=M,[2239]=M,[2243]=M,[2212]=M,[2201]=M,[2238]=M,[2241]=M,[2205]=M,[2169]=M },
-        [11] = { [2169]=M,[2172]=M,[2209]=M,[2208]=M,[2205]=M,[2214]=M,[2224]=M,[2239]=M,[2259]=M,[2303]=M,[2287]=M,[2279]=M,[2252]=M,[2307]=M,[2304]=M },
-        [12] = { [2304]=M,[2307]=M,[2298]=M,[2293]=M,[2303]=M,[2313]=M,[2252]=M,[2212]=M,[2239]=M,[2215]=M,[2204]=M,[2208]=M },
-    };
-
-    -- [FirstSpellID] = R (range spell id)
-    local followers = { [14]=M, [45]=M, [85]=M, [194]=M, [303]=M, [306]=M, [309]=M, [314]=M, [325]=M };
-
-    function GetAutoAttackSpellId(role, missionId, boardIndex, firstSpell)
-        -- Default: meele or tank
-        local attackSpellId = (role == 1 or role == 5) and M or R;
-
-        -- Enemies
-        if (boardIndex or 0) > 4 and missionId then
-            attackSpellId = enemies[boardIndex] and enemies[boardIndex][missionId] or attackSpellId;
-        -- Followers
-        elseif firstSpell then
-            attackSpellId = followers[firstSpell] or attackSpellId;
-        end
-
-        return attackSpellId;
+local function GetLogEventType(effect)
+    if effect.SpellID == 11 then
+        return ET_MeleeDamage;
+    elseif effect.SpellID == 15 then
+        return ET_RangeDamage;
+    elseif effect.IsDamage and (effect.TargetType == 5) then
+        return ET_SpellRangeDamage;
+    elseif effect.IsDamage then
+        return ET_SpellMeleeDamage;
+    elseif effect.Effect == 7 then
+        return ET_PeriodicDamage;
+    elseif effect.IsHeal then
+        return ET_Heal;
+    elseif effect.Effect == 8 then
+        return ET_PeriodicHeal;
     end
 end
 
@@ -56,274 +50,7 @@ local function IsDamageEffect(effect, isAppliedBuff)
            );
 end
 
--- GarrAutoSpellEffect
-
-local GarrAutoSpellEffect = {
-    ID         = 0,
-    SpellID    = 0,
-    Effect     = 0,
-    TargetType = 0,
-    Flags      = 0,
-    Period     = 0,
-    Points     = 0,
-
-    IsDamage = false,
-    IsHeal   = false,
-    IsAura   = false,
-};
-
-function GarrAutoSpellEffect:New(effectInfo)
-    local obj = {
-        ID         = effectInfo.ID,
-        SpellID    = effectInfo.SpellID,
-        Effect     = effectInfo.Effect,
-        TargetType = effectInfo.TargetType,
-        Flags      = effectInfo.Flags,
-        Period     = effectInfo.Period,
-        Points     = effectInfo.Points,
-    };
-
-    obj.IsAura   = obj.Effect >= 7;
-    obj.IsDamage = obj.Effect == 1 or obj.Effect == 3;
-    obj.IsHeal   = obj.Effect == 2 or obj.Effect == 4;
-
-    self.__index = self;
-    setmetatable(obj, self);
-
-    return obj;
-end
-
-function GarrAutoSpellEffect:GetBaseValue(attack)
-    -- isn't work in game DamageDealtMultiplier (11) ???
-    if self.Effect == 11 -- DamageDealtMultiplier
-    or self.Effect == 12 -- DamageDealtMultiplier_2
-    or self.Effect == 13 -- DamageTakenMultiplier
-    or self.Effect == 14 -- DamageTakenMultiplier_2
-    or self.Effect == 15 -- Reflect
-    or self.Effect == 16 -- Reflect_2
-    then
-        return self.Points;
-    -- elseif bit.band(effect.Flags, 1) > 0 then
-    elseif self.Flags == 1 or self.Flags == 3 then
-        return math.floor(self.Points * attack);
-    else
-        return self.Points;
-    end
-end
-
--- GarrAutoSpell --
-
-local GarrAutoSpell = {
-    SpellID      = 0,   -- Auto combatant spell id
-    Cooldown     = 0,
-    Duration     = 0,
-    Flags        = 0,   -- 1-Has start cooldown
-    SchoolMask   = 0,   -- 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
-    Effects      = { }, -- Spell effect list
-    CurCD        = 0,
-    IsPassive    = false,
-    IsAutoAttack = false,
-    WasCasted    = false,
-    HasRandom    = false,
-};
-
-function GarrAutoSpell:New(spellInfo)
-    local obj = {
-        SpellID    = spellInfo.SpellID,
-        Cooldown   = spellInfo.Cooldown,
-        Duration   = spellInfo.Duration,
-        Flags      = spellInfo.Flags,
-        SchoolMask = spellInfo.SchoolMask,
-        Name       = spellInfo.Name,
-        Effects = {},
-        CurCD = 0,
-        IsAutoAttack = false,
-        WasCasted = false,
-        HasRandom = false,
-    };
-
-    for _, effectInf in ipairs(spellInfo.Effects) do
-        local effect = GarrAutoSpellEffect:New(effectInf);
-        table.insert(obj.Effects, effect);
-
-        local tt = effectInf.TargetType;
-        if tt == 19 or tt == 20 or tt == 21 then
-            obj.HasRandom = true;
-        end
-    end
-
-    -- setup start cooldown
-    obj.CurCD = obj.Flags == 1 and obj.Cooldown or 0;
-
-    -- 11-meele, 15-range
-    obj.IsAutoAttack = obj.SpellID == 11 or obj.SpellID == 15;
-
-    obj.IsPassive = passiveSpells[obj.SpellID];
-
-    self.__index = self;
-    setmetatable(obj, self);
-
-    return obj;
-end
-
-function GarrAutoSpell:HasStartCD()
-    return self.Flags == 1;
-end
-
-function GarrAutoSpell:StartCD()
-    if self.WasCasted then
-        self.CurCD = self.Cooldown + 1;
-    end
-    self.WasCasted = false;
-end
-
-function GarrAutoSpell:DecCD()
-    if self.CurCD > 0 then
-        self.CurCD = self.CurCD - 1;
-    end
-end
-
--- GarrAutoBuff --
-
-GarrAutoBuff = {
-    ID            = 0,
-    SpellID       = 0,
-    Effect        = 0,
-    TargetType    = 0,
-    Flags         = 0,
-    Points        = 0,
-    Period        = 0,
-    CurrentPeriod = 0,
-    BaseValue     = 0,
-    SourceIndex   = 0,
-    Duration      = 0,
-    Name          = ""
-};
-
-function GarrAutoBuff:New(effect, effectBaseValue, sourceIndex, duration, name)
-    local obj = {
-        ID         = effect.ID,
-        Effect     = effect.Effect,
-        SpellID    = effect.SpellID,
-        TargetType = effect.TargetType,
-        Flags      = effect.Flags,
-        Period     = effect.Period,
-        Points     = effect.Points,
-        BaseValue  = effectBaseValue;
-        SourceIndex= sourceIndex;
-        Duration   = duration or 0;
-        Name       = name;
-    };
-
-    obj.Period        = math.max(obj.Period - 1, 0);
-    obj.CurrentPeriod = math.max(obj.Period, 0);
-
-    self.__index = self;
-    return setmetatable(obj, self);
-end
-
-function GarrAutoBuff:DecRestTime()
-    self.Duration = math.max(self.Duration - 1, 0);
-    self.CurrentPeriod = self.CurrentPeriod == 0 and self.Period or math.max(self.CurrentPeriod - 1, 0);
-    return self.Duration;
-end
-
--- GarrAutoCobatant --
-
-local GarrAutoCobatant = {
-    FollowerGUID  = nil, -- for compare log and simulation
-    Buffs         = { },
-    Spells        = { },
-    MissionID     = 0,
-    PassiveSpell  = nil,
-    Role          = 0, -- 1-Meele, 2-Ranged/Physical, 3-Ranged/Magic, 4-Heal/Support, 5-Tank
-    Attack        = 0,
-    MaxHP         = 0,
-    StartHP       = 0,
-    CurHP         = 0,
-    BoardIndex    = -1,
-    Level         = 0,
-    DeathSeq      = 0,
-    TauntedBy     = nil,
-    Untargetable  = false,
-    Reflect       = 0,
-    Name          = ""
-};
-
-function GarrAutoCobatant:New(unitInfo, missionId)
-    local obj = {
-        FollowerGUID = unitInfo.followerGUID,
-        Name         = unitInfo.name,
-        Level        = unitInfo.level,
-        MaxHP        = unitInfo.maxHealth,
-        CurHP        = unitInfo.health,
-        StartHP      = unitInfo.health,
-        Attack       = unitInfo.attack,
-        BoardIndex   = unitInfo.boardIndex,
-        Role         = unitInfo.role,
-        MissionID    = missionId,
-        TauntedBy    = nil,
-        Untargetable = false,
-        Reflect      = 0,
-        DeathSeq     = 0,
-        Spells       = { },
-        PassiveSpell = nil,
-        Buffs        = { }
-    };
-
-    self.__index = self;
-    setmetatable(obj, self);
-
-    obj:SetupSpells(unitInfo.autoCombatSpells);
-
-    return obj;
-end
-
-function GarrAutoCobatant:SetupSpells(autoCombatSpells)
-    -- Auto attack can be 11 (meele) or 15 (range)
-    if self.BoardIndex > -1 then
-        local firstSpellId = #autoCombatSpells > 0 and autoCombatSpells[1].autoCombatSpellID;
-        local autoAttackSpellId = GetAutoAttackSpellId(self.Role, self.MissionID, self.BoardIndex, firstSpellId);
-        local autoAttackSpellInfo = T.GARR_AUTO_SPELL[autoAttackSpellId];
-        autoAttackSpellInfo.Name = 'Auto Attack';
-        local autoAttackSpell = GarrAutoSpell:New(autoAttackSpellInfo);
-        table.insert(self.Spells, autoAttackSpell);
-    end
-
-    -- Regular spells
-    for i, spell in pairs(autoCombatSpells) do
-        local spellInfo = T.GARR_AUTO_SPELL[spell.autoCombatSpellID];
-        if spellInfo then
-            spellInfo.Name = spell.name;
-            local spellObj = GarrAutoSpell:New(spellInfo);
-
-            if i == 2 and spellObj.IsPassive then
-                spellInfo.Duration = 1000;
-                self.PassiveSpell = spellObj;
-            else
-                table.insert(self.Spells, spellObj);
-            end
-        end
-    end
-end
-
-function GarrAutoCobatant:IsAlive()
-    return self.CurHP > 0;
-end
-
-function GarrAutoCobatant:GetAvailableSpells()
-    local result = { };
-
-    for _, spell in ipairs(self.Spells) do
-        if spell.CurCD == 0 then
-            table.insert(result, spell);
-        end
-    end
-
-    return result;
-end
-
--- Board --
+-- GarrAutoBoard --
 
 local GarrAutoBoard = {
     MissionID        = 0,
@@ -340,39 +67,6 @@ local GarrAutoBoard = {
     Round            = 0,
     Event            = 0,
 };
-
-function GarrAutoBoard:AddEvent(spell, effectType, boardIndex, targetInfo)
-    if self.LogEnabled then
-        local event = {
-            casterBoardIndex = boardIndex,
-            type = 0,
-            schoolMask = 0,
-            effectIndex = 0,
-            auraType = 0,
-            targetInfo = {},
-        };
-
-        for _, t in ipairs(targetInfo) do
-            local ti = {
-                boardIndex = t.BoardIndex,
-                maxHealth = 0,
-                oldHealth = 0,
-                newHealth = 0,
-                points = t.Points,
-            };
-            table.insert(event.targetInfo, ti);
-        end
-
-        if not self.Log[self.Round] then
-            table.insert(self.Log, { events = {} })
-        end
-
-        local round = self.Log[self.Round];
-        table.insert(round.events, event);
-    end
-
-    self.Event = self.Event + 1;
-end
 
 function GarrAutoBoard:New(mission, unitList, environment)
     local obj = {
@@ -396,7 +90,7 @@ function GarrAutoBoard:New(mission, unitList, environment)
     end
 
     for _, unit in ipairs(unitList) do
-        local unitObj = GarrAutoCobatant:New(unit, mission.missionID);
+        local unitObj = T.GarrAutoCobatant:New(unit, mission.missionID);
         obj.Board[unitObj.BoardIndex] = unitObj;
 
         for _, spell in ipairs(unitObj.Spells) do
@@ -429,10 +123,32 @@ function GarrAutoBoard:MakeEnv(environment, mission)
         }
     };
 
-    local obj = GarrAutoCobatant:New(env, mission.missionID);
+    local obj = T.GarrAutoCobatant:New(env, mission.missionID);
     obj.Untargetable = true;
 
     return obj;
+end
+
+function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targetInfo)
+    if self.LogEnabled then
+        local event = {
+            casterBoardIndex = casterBoardIndex,
+            type = 0,
+            schoolMask = spell.SchoolMask,
+            effectIndex = 0,
+            auraType = 0, -- ???
+            targetInfo = targetInfo,
+        };
+
+        if not self.Log[self.Round] then
+            table.insert(self.Log, { events = {} })
+        end
+
+        local round = self.Log[self.Round];
+        table.insert(round.events, event);
+    end
+
+    self.Event = self.Event + 1;
 end
 
 function GarrAutoBoard:IsTargetableUnit(sourceIndex, targetIndex)
@@ -521,12 +237,13 @@ function GarrAutoBoard:ManageAppliedAura(sourceUnit)
                 for _, v in ipairs(removed_buffs) do
                     table.insert(targets, {
                         BoardIndex = v.Buff.targetBoardIndex,
-                        OldHealth = v.Unit.CurHP,
-                        NewHealth = v.Unit.CurHP,
+                        MaxHP = v.Unit.MaxHP,
+                        OldHP = v.Unit.CurHP,
+                        NewHP = v.Unit.CurHP,
                         Points = 0
                     });
                 end
-                self:AddEvent(spell, "RemoveAura", sourceUnit.BoardIndex, targets);
+                self:AddEvent(spell, {}, ET_RemoveAura, sourceUnit.BoardIndex, targets);
             end
         end
     end
@@ -551,7 +268,8 @@ function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, effect, effectBaseValue
     if  (effect.Flags == 2 or effect.Flags == 3)
     and (buff.Effect  == 7 or buff.Effect  == 8) then
         local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, buff, true);
-        self:AddEvent(buff, "PeriodicDamage", sourceUnit.BoardIndex, { targetInfo });
+        local logEventType = GetLogEventType(effect);
+        self:AddEvent(buff, effect, logEventType, sourceUnit.BoardIndex, { targetInfo });
     end
 end
 
@@ -564,7 +282,8 @@ function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
         if buff.SourceIndex == sourceUnit.BoardIndex and buff.SpellID == spell.SpellID then
             if (buff.Effect == 7 or buff.Effect == 8) and (buff.CurrentPeriod == 0) then
                 local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, buff, true);
-                self:AddEvent(buff, "PeriodicDamage", sourceUnit.BoardIndex, {targetInfo});
+                local logEventType = GetLogEventType(buff);
+                self:AddEvent(spell, buff, logEventType, sourceUnit.BoardIndex, {targetInfo});
                 if not targetUnit:IsAlive() then
                     self:OnDie(sourceUnit, targetUnit, spell, targetInfo);
                 end
@@ -688,6 +407,24 @@ function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
     return math.max(math.floor(value + 0.00000000001), 0);
 end
 
+function GarrAutoBoard:GetBaseValue(effect, attack)
+    -- isn't work in game DamageDealtMultiplier (11) ???
+    if effect.Effect == 11 -- DamageDealtMultiplier
+    or effect.Effect == 12 -- DamageDealtMultiplier_2
+    or effect.Effect == 13 -- DamageTakenMultiplier
+    or effect.Effect == 14 -- DamageTakenMultiplier_2
+    or effect.Effect == 15 -- Reflect
+    or effect.Effect == 16 -- Reflect_2
+    then
+        return effect.Points;
+    -- elseif bit.band(effect.Flags, 1) > 0 then
+    elseif effect.Flags == 1 or effect.Flags == 3 then
+        return math.floor(effect.Points * attack);
+    else
+        return effect.Points;
+    end
+end
+
 function GarrAutoBoard:CastSpellEffect(sourceUnit, targetUnit, spell, effect, isAppliedBuff)
     local oldTargetHP = targetUnit.CurHP;
     local value = 0;
@@ -706,7 +443,7 @@ function GarrAutoBoard:CastSpellEffect(sourceUnit, targetUnit, spell, effect, is
         targetUnit.MaxHP = targetUnit.MaxHP + value;
         targetUnit.CurHP = math.min(targetUnit.MaxHP, targetUnit.CurHP + value);
     else
-        value = effect:GetBaseValue(sourceUnit.Attack);-- GetEffectBaseValue(effect, sourceUnit.Attack);
+        value = self:GetBaseValue(effect, sourceUnit.Attack);
         self:ApplyAura(sourceUnit, targetUnit, effect, value, spell.Duration, spell.Name);
     end
 
@@ -714,9 +451,9 @@ function GarrAutoBoard:CastSpellEffect(sourceUnit, targetUnit, spell, effect, is
 
     return {
         BoardIndex = targetUnit.BoardIndex,
-        MaxHP  = targetUnit.MaxHP,
-        OldHealth  = oldTargetHP,
-        NewHealth  = targetUnit.CurHP,
+        MaxHP = targetUnit.MaxHP,
+        OldHP = oldTargetHP,
+        NewHP = targetUnit.CurHP,
         Points     = value
     };
 end
@@ -746,7 +483,9 @@ function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
             -- 15-Reflect
             local reflEffect = { Effect = 15, ID = -1 };
             local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, { }, reflEffect, true);
-            self:AddEvent(spell, 15, targetUnit.BoardIndex, { reflTargetInfo });
+            -- todo: check it
+            -- local logEventType = GetLogEventType(reflEffect);
+            self:AddEvent(spell, reflEffect, ET_MeleeDamage, targetUnit.BoardIndex, { reflTargetInfo });
 
             -- 15-Reflect
             self:OnTakeDamage(sourceUnit, spell, reflEffect, reflTargetInfo);
@@ -754,13 +493,13 @@ function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
     end
 
     -- unit died
-    if eventTargetInfo.NewHealth == 0 then
-        self:OnDie(sourceUnit, targetUnit, spell, eventTargetInfo)
+    if eventTargetInfo.NewHP == 0 then
+        self:OnDie(sourceUnit, targetUnit, spell, effect, eventTargetInfo)
         self.IsOver = self:CheckMissionOver();
     end
 end
 
-function GarrAutoBoard:OnDie(sourceUnit, targetUnit, spell, eventTargetInfo)
+function GarrAutoBoard:OnDie(sourceUnit, targetUnit, spell, effect, eventTargetInfo)
     -- clear taunt and calc died order
     local diedOrder = 0;
     for i = 0, 12 do
@@ -778,7 +517,7 @@ function GarrAutoBoard:OnDie(sourceUnit, targetUnit, spell, eventTargetInfo)
 
     targetUnit.DeathSeq = diedOrder + 1;
 
-    self:AddEvent(spell, "Died", sourceUnit.BoardIndex, {eventTargetInfo});
+    self:AddEvent(spell, effect, ET_Died, sourceUnit.BoardIndex, {eventTargetInfo});
 end
 
 function GarrAutoBoard:GetTargets(unit, targetType, lastTargetType, lastTargetIndexes)
@@ -801,7 +540,7 @@ function GarrAutoBoard:ApplyPassiveAura(sourceUnit)
                 local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, sourceUnit.PassiveSpell, effect, false);
                 table.insert(targetInfo, eventTargetInfo);
             end
-            self:AddEvent(sourceUnit.PassiveSpell, 'ApplyAura', sourceUnit.BoardIndex, targetInfo);
+            self:AddEvent(sourceUnit.PassiveSpell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
         end
     end
 end
@@ -847,7 +586,8 @@ function GarrAutoBoard:MakeAction(sourceUnit)
                     table.insert(targetInfo, eventTargetInfo);
                 end
 
-                self:AddEvent(spell, effect.Effect, sourceUnit.BoardIndex, targetInfo);
+                local logEventType = GetLogEventType(effect);
+                self:AddEvent(spell, effect, logEventType, sourceUnit.BoardIndex, targetInfo);
 
                 for _, unitInfo in pairs(targetInfo) do
                     self:OnTakeDamage(sourceUnit, spell, effect, unitInfo);
@@ -879,6 +619,10 @@ function GarrAutoBoard:Step()
         self:MakeAction(self.Environment);
     end
 
+    self:AdddCheckpoint();
+end
+
+function GarrAutoBoard:AdddCheckpoint(index)
     local checkpoint = {};
     for i = 0, 12 do
         local unit = self.Board[i];
@@ -886,15 +630,26 @@ function GarrAutoBoard:Step()
             table.insert(checkpoint, string.format("%x:%d", i, unit.CurHP));
         end
     end
-    table.insert(self.Checkpoints, table.concat(checkpoint, "_"));
+
+    local text = table.concat(checkpoint, "_");
+    if index then
+        self.Checkpoints[index] = text;
+    else
+        table.insert(self.Checkpoints, text);
+    end
+
+    if self.Checkpoints[#self.Checkpoints] == self.Checkpoints[#self.Checkpoints-1] then
+        self.Checkpoints[#self.Checkpoints] = nil;
+    end
 end
 
 function GarrAutoBoard:Run()
+    self:AdddCheckpoint(0);
     while not self.IsOver and self.Round < MAX_ROUNDS do
         self:Step();
+        self:CheckMissionOver();
         self.Round = self.Round + 1;
     end
 end
 
 T.GarrAutoBoard = GarrAutoBoard;
-T.GetAutoAttackSpellId = GetAutoAttackSpellId;

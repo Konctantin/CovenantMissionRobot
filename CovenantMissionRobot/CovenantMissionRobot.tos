@@ -8,6 +8,8 @@
 VM/TargetManager.lua
 VM/GarrAutoSpell.g.lua
 VM/GarrAutoSpell.fix.lua
+VM/GarrAutoSpell.lua
+VM/GarrAutoCombatant.lua
 VM/GarrAutoBoard.lua
 
 UI/UI.xml

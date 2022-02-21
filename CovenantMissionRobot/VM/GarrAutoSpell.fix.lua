@@ -1,6 +1,10 @@
 local _, T = ...;
 
+local AUTO_ATTACK    = { [11]=1, [15]=1 };
+local PASSIVE_SPELLS = { [47]=1, [82]=1, [90]=1, [105]=1, [109]=1 };
+
 function T.ApplySpellFixes()
+
     -- Auto Attack: Deal damage to an enemy at range.
     T.GARR_AUTO_SPELL[015].Effects[1].Points = 1; -- old 0.5
 
@@ -29,4 +33,21 @@ function T.ApplySpellFixes()
 
     -- Cannon Barrage: Deals $s1 Fire damage to all enemies. Does not cast immediately.
     -- T.GARR_AUTO_SPELL[339] = nil; -- mission 2307 (Корсар-канонир)
+
+    -- Some presetups
+    for s, spell in pairs(T.GARR_AUTO_SPELL) do
+        T.GARR_AUTO_SPELL[s].IsAutoAttack = AUTO_ATTACK[s] == 1;
+        T.GARR_AUTO_SPELL[s].IsPassive = PASSIVE_SPELLS[s] == 1;
+
+        for _, effect in ipairs(spell.Effects) do
+            local tt = effect.TargetType;
+            if tt == 19 or tt == 20 or tt == 21 then
+                spell.HasRandomEffect = true;
+            end
+
+            effect.IsAura   = effect.Effect >= 7;
+            effect.IsDamage = effect.Effect == 1 or effect.Effect == 3;
+            effect.IsHeal   = effect.Effect == 2 or effect.Effect == 4;
+        end
+    end
 end

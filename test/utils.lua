@@ -1,30 +1,20 @@
+local _, T = ...;
 
-local T = { Name = "LogTester" };
-
--- /dump CovenantMissionFrame.MissionTab.MissionPage.Board.framesByBoardIndex[0].autoCombatSpells
--- /dump CovenantMissionFrame.MissionTab.MissionPage.Board.framesByBoardIndex[2].name
-
-_G.bit = loadfile('libs/bit.lua')();
-
--- Init like wow addons
-print('Start loading simulator...');
-
-loadfile('CovenantMissionRobot/VM/TargetManager.lua')(T.Name, T);
-loadfile('CovenantMissionRobot/VM/GarrAutoSpell.g.lua')(T.Name, T);
-loadfile('CovenantMissionRobot/VM/GarrAutoSpell.fix.lua')(T.Name, T);
-loadfile('CovenantMissionRobot/VM/GarrAutoBoard.lua')(T.Name, T);
-
-loadfile('VenturePlan/vs-spells.lua')(T.Name, T);
-loadfile('VenturePlan/vs.lua')(T.Name, T);
-
-loadfile("Logs/VenturePlan_000.lua")(T.Name, T);
-
-print('Simulator has bin loaded!');
-
-T.ApplySpellFixes();
+T.LogEventTypes = {
+	[0] = "MeleeDamage",
+	[1] = "RangeDamage",
+	[2] = "SpellMeleeDamage",
+	[3] = "SpellRangeDamage",
+	[4] = "Heal",
+	[5] = "PeriodicDamage",
+	[6] = "PeriodicHeal",
+	[7] = "ApplyAura",
+	[8] = "RemoveAura",
+	[9] = "Died",
+}
 
 local generateCheckpoints do
-	local hex = {}
+	local hex = { }
 	for i = 0, 12 do
         hex[i] = ("%x"):format(i)
     end
@@ -43,7 +33,8 @@ local generateCheckpoints do
 	function generateCheckpoints(cr)
 		local eei = cr.environment
 		local envs = eei and eei.autoCombatSpellInfo
-		local checkpoints, b = {}, {[-1] = envs and true or nil}
+		local checkpoints = {};
+        local b = {[-1] = envs and true or nil};
 		for i = 1, #cr.encounters do
 			local e = cr.encounters[i]
 			b[e.boardIndex] = e.health
@@ -125,35 +116,6 @@ local function PrepareVP(missionLog)
     return sim;
 end
 
-for i, missionLog in ipairs(VP_MissionReports) do
-    if i < 400 then
-    --if missionLog.id == '16424213240007' then
-        print("");
-        print("LogID: "..missionLog.id);
-
-        local _, baseCheckpoints = generateCheckpoints(missionLog);
-
-        local cmr = PrepareCMR(missionLog);
-        local vp = PrepareVP(missionLog);
-
-        print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
-
-        cmr:Run();
-        vp:Run();
-
-
-        for r = 1, math.max(#cmr.Checkpoints, #vp.checkpoints, #baseCheckpoints) do
-            local l1 = cmr.Checkpoints[r];
-            local l2 = vp.checkpoints[r];
-            local l3 = baseCheckpoints[r];
-
-            if l1 == l2 and l1 == l3 then
-                print(r, l1)
-            else
-                print(r, l1, l2, l3);
-            end
-        end
-    end
-end
-
-print('Done!')
+T.GenerateCheckpoints = generateCheckpoints;
+T.PrepareCMR = PrepareCMR;
+T.PrepareVP = PrepareVP;
