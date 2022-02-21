@@ -1,6 +1,3 @@
-[submodule "CovenantMissionRobot/VenturePlan"]
-	path = CovenantMissionRobot/VenturePlan
-	url = git@github.com:Konctantin/VenturePlan.git
 [submodule "VenturePlan"]
 	path = VenturePlan
 	url = git@github.com:Konctantin/VenturePlan.git
