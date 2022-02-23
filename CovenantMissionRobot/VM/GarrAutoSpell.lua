@@ -51,11 +51,12 @@ function GarrAutoSpell:DecCD()
     end
 end
 
--- GarrAutoBuff --
+-- GarrAutoAura --
 
-GarrAutoBuff = {
+GarrAutoAura = {
     ID            = 0,
     SpellID       = 0,
+    EffectIndex   = 0,
     Effect        = 0,
     TargetType    = 0,
     Flags         = 0,
@@ -68,10 +69,11 @@ GarrAutoBuff = {
     Name          = ""
 };
 
-function GarrAutoBuff:New(effect, effectBaseValue, sourceIndex, duration, name)
+function GarrAutoAura:New(effect, effectBaseValue, sourceIndex, duration, name)
     local obj = {
         ID         = effect.ID,
         Effect     = effect.Effect,
+        EffectIndex= effect.EffectIndex,
         SpellID    = effect.SpellID,
         TargetType = effect.TargetType,
         Flags      = effect.Flags,
@@ -90,11 +92,11 @@ function GarrAutoBuff:New(effect, effectBaseValue, sourceIndex, duration, name)
     return setmetatable(obj, self);
 end
 
-function GarrAutoBuff:DecRestTime()
+function GarrAutoAura:DecRestTime()
     self.Duration = math.max(self.Duration - 1, 0);
     self.CurrentPeriod = self.CurrentPeriod == 0 and self.Period or math.max(self.CurrentPeriod - 1, 0);
     return self.Duration;
 end
 
 T.GarrAutoSpell = GarrAutoSpell;
-T.GarrAutoBuff  = GarrAutoBuff;
+T.GarrAutoAura  = GarrAutoAura;

@@ -23,7 +23,7 @@
             "name": "lua: LogTester",
             "type": "lua",
             "request": "launch",
-            "program": "${workspaceFolder}/Logs/LogTester.lua",
+            "program": "${workspaceFolder}/test/LogTester.lua",
             "console": "integratedTerminal",
         },
     ]

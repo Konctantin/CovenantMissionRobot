@@ -33,7 +33,7 @@ end
 
 local GarrAutoCobatant = {
     FollowerGUID  = nil, -- for compare log and simulation
-    Buffs         = { },
+    Auras         = { },
     Spells        = { },
     MissionID     = 0,
     PassiveSpell  = nil,
@@ -69,7 +69,7 @@ function GarrAutoCobatant:New(unitInfo, missionId)
         DeathSeq     = 0,
         Spells       = { },
         PassiveSpell = nil,
-        Buffs        = { }
+        Auras        = { }
     };
 
     self.__index = self;

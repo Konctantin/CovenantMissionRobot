@@ -30,6 +30,8 @@ local function GetLogEventType(effect)
         return ET_Heal;
     elseif effect.Effect == 8 then
         return ET_PeriodicHeal;
+    elseif effect.IsAura then
+        return ET_ApplyAura;
     end
 end
 
@@ -226,9 +228,9 @@ function GarrAutoBoard:ManageAppliedAura(sourceUnit)
             for u = 0, 12 do
                 local unit = self.Board[u];
                 if unit and unit:IsAlive() then
-                    local buffs = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
-                    for _, buff in ipairs(buffs) do
-                        table.insert(removed_buffs, { Buff = buff, Unit = unit });
+                    local auras = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
+                    for _, aura in ipairs(auras) do
+                        table.insert(removed_buffs, { Buff = aura, Unit = unit });
                     end
                 end
             end
@@ -251,8 +253,8 @@ function GarrAutoBoard:ManageAppliedAura(sourceUnit)
 end
 
 function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, effect, effectBaseValue, duration, name)
-    local buff = GarrAutoBuff:New(effect, effectBaseValue, sourceUnit.BoardIndex, duration, name);
-    table.insert(targetUnit.Buffs, buff);
+    local aura = GarrAutoAura:New(effect, effectBaseValue, sourceUnit.BoardIndex, duration, name);
+    table.insert(targetUnit.Auras, aura);
 
     -- Taunt
     if effect.Effect == 9 then
@@ -267,49 +269,48 @@ function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, effect, effectBaseValue
 
     -- extra initial period and DoT or HoT
     if  (effect.Flags == 2 or effect.Flags == 3)
-    and (buff.Effect  == 7 or buff.Effect  == 8) then
-        local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, buff, true);
-        local logEventType = GetLogEventType(effect);
-        self:AddEvent(buff, effect, logEventType, sourceUnit.BoardIndex, { targetInfo });
+    and (aura.Effect  == 7 or aura.Effect  == 8) then
+        local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
+        self:AddEvent(aura, effect, ET_ApplyAura, sourceUnit.BoardIndex, { targetInfo });
     end
 end
 
 function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
-    local removed_buffs = { };
+    local removed_auras = { };
 
     local i = 1;
-    while i <= #targetUnit.Buffs do
-        local buff = targetUnit.Buffs[i];
-        if buff.SourceIndex == sourceUnit.BoardIndex and buff.SpellID == spell.SpellID then
-            if (buff.Effect == 7 or buff.Effect == 8) and (buff.CurrentPeriod == 0) then
-                local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, buff, true);
-                local logEventType = GetLogEventType(buff);
-                self:AddEvent(spell, buff, logEventType, sourceUnit.BoardIndex, {targetInfo});
+    while i <= #targetUnit.Auras do
+        local aura = targetUnit.Auras[i];
+        if aura.SourceIndex == sourceUnit.BoardIndex and aura.SpellID == spell.SpellID then
+            if (aura.Effect == 7 or aura.Effect == 8) and (aura.CurrentPeriod == 0) then
+                local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
+                local logEventType = GetLogEventType(aura);
+                self:AddEvent(spell, aura, logEventType, sourceUnit.BoardIndex, {targetInfo});
                 if not targetUnit:IsAlive() then
                     self:OnDie(sourceUnit, targetUnit, spell, targetInfo);
                 end
             end
 
-            buff:DecRestTime();
+            aura:DecRestTime();
 
-            local isDeadUnitPassiveSkill = sourceUnit.PassiveSpell and not sourceUnit:IsAlive() and buff.SpellID == sourceUnit.PassiveSpell.ID;
-            if buff.Duration == 0 or isDeadUnitPassiveSkill then
-                table.insert(removed_buffs, {
-                    buff = buff,
+            local isDeadUnitPassiveSkill = sourceUnit.PassiveSpell and not sourceUnit:IsAlive() and aura.SpellID == sourceUnit.PassiveSpell.ID;
+            if aura.Duration == 0 or isDeadUnitPassiveSkill then
+                table.insert(removed_auras, {
+                    aura = aura,
                     targetBoardIndex = targetUnit.BoardIndex
                 });
 
-                table.remove(targetUnit.Buffs, i);
+                table.remove(targetUnit.Auras, i);
                 i = i - 1;
 
                 -- Taunt
-                if buff.Effect == 9 then
+                if aura.Effect == 9 then
                     targetUnit.TauntedBy = nil;
                 -- Untargetable
-                elseif buff.Effect == 10 then
+                elseif aura.Effect == 10 then
                     targetUnit.Untargetable = false;
                 -- Reflect
-                elseif buff.Effect == 15 or buff.Effect == 16 then
+                elseif aura.Effect == 15 or aura.Effect == 16 then
                     targetUnit.Reflect = 0;
                 end
             end
@@ -317,32 +318,32 @@ function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
         i = i + 1;
     end
 
-    return removed_buffs;
+    return removed_auras;
 end
 
 function GarrAutoBoard:GetDamageMultiplier(sourceUnit, targetUnit)
     -- мб сначала складываются отдельно модификаторы на источнике и на цели, а потом между собой перемножаются
-    local buffs = { };
+    local auras = { };
     local dealt, taken = 1, 1;
 
     -- delat damage multiplier
-    for _, buff in ipairs(sourceUnit.Buffs) do
-        if buff.Effect == 11 or buff.Effect == 12 then
-            dealt = dealt + buff.BaseValue;
-            buffs[buff.SpellID] = buff.BaseValue + (buffs[buff.SpellID] or 0);
+    for _, aura in ipairs(sourceUnit.Auras) do
+        if aura.Effect == 11 or aura.Effect == 12 then
+            dealt = dealt + aura.BaseValue;
+            auras[aura.SpellID] = aura.BaseValue + (auras[aura.SpellID] or 0);
         end
     end
 
     -- taken damage multiplier
-    for _, buff in ipairs(targetUnit.Buffs) do
-        if buff.Effect == 13 or buff.Effect == 14 then
-            taken = taken + buff.BaseValue;
-            buffs[buff.SpellID] = buff.BaseValue + (buffs[buff.SpellID] or 0);
+    for _, aura in ipairs(targetUnit.Auras) do
+        if aura.Effect == 13 or aura.Effect == 14 then
+            taken = taken + aura.BaseValue;
+            auras[aura.SpellID] = aura.BaseValue + (auras[aura.SpellID] or 0);
         end
     end
 
     local positive_multiplier = 1;
-    for _, value in pairs(buffs) do
+    for _, value in pairs(auras) do
         --dealt = dealt * (1 + value);
         if value > 0 then
             positive_multiplier = positive_multiplier * (1 + value);
@@ -356,17 +357,17 @@ end
 function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit)
     local result = 0;
 
-    for _, buff in ipairs(sourceUnit.Buffs) do
+    for _, aura in ipairs(sourceUnit.Auras) do
         -- AdditionalDamageDealt
-        if buff.Effect == 19 then
-            result = result + buff.BaseValue;
+        if aura.Effect == 19 then
+            result = result + aura.BaseValue;
         end
     end
 
-    for _, buff in ipairs(targetUnit.Buffs) do
+    for _, aura in ipairs(targetUnit.Auras) do
         -- AdditionalTakenDamage
-        if buff.Effect == 20 then
-            result = result + buff.BaseValue;
+        if aura.Effect == 20 then
+            result = result + aura.BaseValue;
         end
     end
 
@@ -420,6 +421,7 @@ function GarrAutoBoard:GetBaseValue(effect, attack)
         return effect.Points;
     -- elseif bit.band(effect.Flags, 1) > 0 then
     elseif effect.Flags == 1 or effect.Flags == 3 then
+        --return math.floor(effect.Points * (attack+1));
         return math.floor(effect.Points * attack);
     else
         return effect.Points;
@@ -486,7 +488,7 @@ function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
             local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, { }, reflEffect, true);
             -- todo: check it
             -- local logEventType = GetLogEventType(reflEffect);
-            self:AddEvent(spell, reflEffect, ET_MeleeDamage, targetUnit.BoardIndex, { reflTargetInfo });
+            self:AddEvent(spell, effect, ET_MeleeDamage, targetUnit.BoardIndex, { reflTargetInfo });
 
             -- 15-Reflect
             self:OnTakeDamage(sourceUnit, spell, reflEffect, reflTargetInfo);

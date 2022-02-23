@@ -27,22 +27,29 @@ print('Simulator has bin loaded!');
 
 T.ApplySpellFixes();
 
-for i, missionLog in ipairs(VP_MissionReports) do
-    if i < 2 then
-    --if missionLog.id == '16424213240007' then
-        print("");
-        print("LogID: "..missionLog.id);
+--[[
+    Problems:
+    1) Aura 91 Dazzledust (attack:205*points:-0.6=-123) need -124 ??? but global result is ok (log: 16423565370004)
+]]
 
-        local _, baseCheckpoints = T.GenerateCheckpoints(missionLog);
+for i, missionLog in ipairs(VP_MissionReports) do
+    --if i < 5 then
+    if missionLog.id == '16423565370004' then
+        print("");
+        print(string.format("LogID: %s Mission: %d", missionLog.id, missionLog.missionID));
+
+        local isOK, baseCheckpoints = T.GenerateCheckpoints(missionLog);
 
         local cmr = T.PrepareCMR(missionLog);
         --local vp = T.PrepareVP(missionLog);
 
         print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
+        print("Log: "..(isOK and "OK" or "Broken!"))
 
         cmr:Run();
 
-        T.PrintComparedLogs(cmr.Log, missionLog.log);
+        T.PrintComparedLogs(cmr.Log, missionLog.log, true);
+        print("");
         --vp:Run();
 
         for r = 0, math.max(#cmr.Checkpoints, #baseCheckpoints) do
