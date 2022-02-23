@@ -1908,12 +1908,12 @@ T.GARR_AUTO_SPELL = {
         { ID = 484, SpellID = 351, EffectIndex = 0, Effect = 03, TargetType = 05, Flags = 0x01, Period = 0, Points = 0.75 },
     } },
 
-    -- Active Shielding: Activates a shield that prevents $s1 % damage for two turns.
+    -- Active Shielding: Activates a shield that prevents $s1% damage for two turns.
     [352] = { SpellID = 352, Cooldown = 4, Duration = 0, Flags = 0, SchoolMask = 0x40, Effects = {
         { ID = 485, SpellID = 352, EffectIndex = 0, Effect = 14, TargetType = 01, Flags = 0x01, Period = 2, Points = 0.3 },
     } },
 
-    -- Disruptive Field: Projects a disruption field that reduces damage done by an enemy at range for $s1 % damage for two turns.
+    -- Disruptive Field: Projects a disruption field that reduces damage done by an enemy at range for $s1% damage for two turns.
     [353] = { SpellID = 353, Cooldown = 4, Duration = 0, Flags = 0, SchoolMask = 0x40, Effects = {
         { ID = 486, SpellID = 353, EffectIndex = 0, Effect = 12, TargetType = 05, Flags = 0x01, Period = 2, Points = 0.2 },
     } },

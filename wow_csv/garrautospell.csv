@@ -349,8 +349,8 @@ ID,Name_lang,Description_lang,Cooldown,Duration,Flags,SchoolMask,IconFileDataID
 349,Anima Swell,Deals $s1 Arcane damage to all enemies,4,0,0,64,3528285
 350,Attack Wave,Deals $s1 Arcane damage to all adjacent enemies.,4,0,0,64,446910
 351,Attack Pulse,Deals a powerful burst of $s1 Arcane damage to an enemy at range. This ability starts on cooldown.,4,0,1,64,613397
-352,Active Shielding,Activates a shield that prevents $s1 % damage for two turns.,4,0,0,64,132315
-353,Disruptive Field,Projects a disruption field that reduces damage done by an enemy at range for $s1 % damage for two turns.,4,0,0,64,636332
+352,Active Shielding,Activates a shield that prevents $s1% damage for two turns.,4,0,0,64,132315
+353,Disruptive Field,Projects a disruption field that reduces damage done by an enemy at range for $s1% damage for two turns.,4,0,0,64,636332
 354,Energy Blast,Deals a powerful burst of $s1 Arcane damage to all enemies in melee. This ability starts on cooldown.,5,0,1,64,613397
 355,Mitigation Aura,The Automa projects an aura that disrupts it's opponents. Reducing the damage done by the furthest enemy at range by $s1%.,0,0,0,64,132315
 356,Bone Ambush,"Hidden allies shoot bone shards at all enemies at range, dealing $s1 Physical damage.",2,0,0,1,135537
