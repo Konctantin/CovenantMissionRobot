@@ -32,15 +32,15 @@ T.ApplySpellFixes();
     1) Aura 91 Dazzledust (attack:205*points:-0.6=-123) need -124 ??? but global result is ok (log: 16423565370004)
 ]]
 
-for i, missionLog in ipairs(VP_MissionReports) do
-    --if i < 5 then
-    if missionLog.id == '16423565370004' then
+for i, report in ipairs(VP_MissionReports) do
+    if i < 10 then
+    --if missionLog.id == '16423565370004' then
         print("");
-        print(string.format("LogID: %s Mission: %d", missionLog.id, missionLog.missionID));
+        print(string.format("LogID: %s Mission: %d", report.id, report.missionID));
 
-        local isOK, baseCheckpoints = T.GenerateCheckpoints(missionLog);
+        local isOK, baseCheckpoints = T.GenerateCheckpoints(report);
 
-        local cmr = T.PrepareCMR(missionLog);
+        local cmr = T.PrepareCMR(report);
         --local vp = T.PrepareVP(missionLog);
 
         print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
@@ -48,12 +48,12 @@ for i, missionLog in ipairs(VP_MissionReports) do
 
         cmr:Run();
 
-        T.PrintComparedLogs(cmr.Log, missionLog.log, true);
+        T.PrintComparedLogs(cmr.Log, report.log, true);
         print("");
         --vp:Run();
 
-        for r = 0, math.max(#cmr.Checkpoints, #baseCheckpoints) do
-            local l1 = cmr.Checkpoints[r];
+        for r = 0, math.max(#cmr.CheckPoints, #baseCheckpoints) do
+            local l1 = cmr.CheckPoints[r];
             --local l2 = vp.checkpoints[r];
             local l3 = baseCheckpoints[r];
 

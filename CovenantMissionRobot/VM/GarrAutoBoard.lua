@@ -15,12 +15,14 @@ local ET_ApplyAura = 7;
 local ET_RemoveAura = 8;
 local ET_Died = 9;
 
+local HEX_TABLE = {[0]="0",[1]="1",[2]="2",[3]="3",[4]="4",[5]="5",[6]="6",[7]="7",[8]="8",[9]="9",[10]="a",[11]="b",[12]="c"};
+
 local function GetLogEventType(effect)
     if effect.SpellID == 11 then
         return ET_MeleeDamage;
     elseif effect.SpellID == 15 then
         return ET_RangeDamage;
-    elseif effect.IsDamage and (effect.TargetType == 5) then
+    elseif effect.IsDamage and (effect.TargetType == 5 or effect.TargetType == 17) then
         return ET_SpellRangeDamage;
     elseif effect.IsDamage then
         return ET_SpellMeleeDamage;
@@ -59,7 +61,7 @@ local GarrAutoBoard = {
     MissionScalar    = 0,
     MissionName      = "",
     Board            = { },
-    Checkpoints      = { },
+    CheckPoints      = { },
     Log              = { },
     LogEnabled       = false,
     Environment      = nil,
@@ -76,7 +78,7 @@ function GarrAutoBoard:New(mission, unitList, environment)
         MissionName = mission.missionName,
         MissionScalar = mission.missionScalar,
         Board = { },
-        Checkpoints = { },
+        CheckPoints = { },
         Log = { },
         LogEnabled = false,
         Environment = nil,
@@ -223,23 +225,23 @@ function GarrAutoBoard:ManageAppliedAura(sourceUnit)
     for i = 1, #sourceUnit.Spells do
         local spell = sourceUnit.Spells[i];
         if spell and not spell.IsAutoAttack then
-            local removed_buffs = { };
+            local removed_auras = { };
 
             for u = 0, 12 do
                 local unit = self.Board[u];
                 if unit and unit:IsAlive() then
-                    local auras = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
-                    for _, aura in ipairs(auras) do
-                        table.insert(removed_buffs, { Buff = aura, Unit = unit });
+                    local removed = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
+                    for _, rinfo in ipairs(removed) do
+                        table.insert(removed_auras, rinfo);
                     end
                 end
             end
 
-            if #removed_buffs > 0 then
+            if #removed_auras > 0 then
                 local targets = { };
-                for _, v in ipairs(removed_buffs) do
+                for _, v in ipairs(removed_auras) do
                     table.insert(targets, {
-                        BoardIndex = v.Buff.targetBoardIndex,
+                        BoardIndex = v.Unit.BoardIndex,
                         MaxHP = v.Unit.MaxHP,
                         OldHP = v.Unit.CurHP,
                         NewHP = v.Unit.CurHP,
@@ -293,13 +295,10 @@ function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
 
             aura:DecRestTime();
 
-            local isDeadUnitPassiveSkill = sourceUnit.PassiveSpell and not sourceUnit:IsAlive() and aura.SpellID == sourceUnit.PassiveSpell.ID;
-            if aura.Duration == 0 or isDeadUnitPassiveSkill then
-                table.insert(removed_auras, {
-                    aura = aura,
-                    targetBoardIndex = targetUnit.BoardIndex
-                });
+            -- Passive aura can be remove if source unit was died
+            if aura.Duration == 0 or (aura.IsPassive and not sourceUnit:IsAlive()) then
 
+                table.insert(removed_auras, { Aura = aura, Unit = targetUnit });
                 table.remove(targetUnit.Auras, i);
                 i = i - 1;
 
@@ -321,8 +320,7 @@ function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
     return removed_auras;
 end
 
-function GarrAutoBoard:GetDamageMultiplier(sourceUnit, targetUnit)
-    -- мб сначала складываются отдельно модификаторы на источнике и на цели, а потом между собой перемножаются
+function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
     local auras = { };
     local dealt, taken = 1, 1;
 
@@ -342,36 +340,32 @@ function GarrAutoBoard:GetDamageMultiplier(sourceUnit, targetUnit)
         end
     end
 
-    local positive_multiplier = 1;
-    for _, value in pairs(auras) do
-        --dealt = dealt * (1 + value);
-        if value > 0 then
-            positive_multiplier = positive_multiplier * (1 + value);
-        end
-    end
-
-    local multiplier = dealt * taken;
-    return math.max(multiplier, 0), taken;
-end
-
-function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit)
-    local result = 0;
-
+    local addDamage = 0;
     for _, aura in ipairs(sourceUnit.Auras) do
         -- AdditionalDamageDealt
         if aura.Effect == 19 then
-            result = result + aura.BaseValue;
+            addDamage = addDamage + aura.BaseValue;
         end
     end
 
     for _, aura in ipairs(targetUnit.Auras) do
         -- AdditionalTakenDamage
         if aura.Effect == 20 then
-            result = result + aura.BaseValue;
+            addDamage = addDamage + aura.BaseValue;
         end
     end
 
-    return result;
+    -- todo: test it
+    local multiplier2 = 1;
+    for _, v in pairs(auras) do
+        multiplier2 = multiplier2 * (1 + v);
+    end
+
+    local multiplier = math.max(dealt * taken, 0);
+    local result = multiplier * (value + addDamage);
+    local result2 = multiplier2 * (value + addDamage);
+
+    return result, result2; -- test it!
 end
 
 function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
@@ -395,9 +389,7 @@ function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
             return value;
         end
 
-        local multiplier, positive_multiplier = self:GetDamageMultiplier(sourceUnit, targetUnit);
-        local additionalDamage = self:GetAdditionalDamage(sourceUnit, targetUnit);
-        value = multiplier * (value + additionalDamage);
+        value = self:GetAdditionalDamage(sourceUnit, targetUnit, value);
         -- TODO: здесь до сих пор неправильно.
         -- Мясыш со своим бафом бьет по мобу. У моба есть рефлект и два разных уменьшения урона в %.
         -- Базовое значение рефлекта = 132, уменьшение урона = 20+30, увеличение входящего урона на мясыше = 45.
@@ -484,7 +476,7 @@ function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
     if effect.IsDamage then
         if targetUnit and targetUnit.Reflect > 0 then
             -- 15-Reflect
-            local reflEffect = { Effect = 15, ID = -1 };
+            local reflEffect = { EffectIndex = 0, Effect = 15 };
             local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, { }, reflEffect, true);
             -- todo: check it
             -- local logEventType = GetLogEventType(reflEffect);
@@ -534,16 +526,18 @@ function GarrAutoBoard:GetTargets(unit, targetType, lastTargetType, lastTargetIn
 end
 
 function GarrAutoBoard:ApplyPassiveAura(sourceUnit)
-    if sourceUnit and sourceUnit.PassiveSpell then
-        for _, effect in ipairs(sourceUnit.PassiveSpell.Effects) do
-            local targetInfo = { };
-            local targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, -1);
-            for _, targetIndex in ipairs(targetIndexes) do
-                local targetUnit = self.Board[targetIndex];
-                local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, sourceUnit.PassiveSpell, effect, false);
-                table.insert(targetInfo, eventTargetInfo);
+    for _, spell in ipairs(sourceUnit.Spells) do
+        if spell.IsPassive then
+            for _, effect in ipairs(spell.Effects) do
+                local targetInfo = { };
+                local targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, -1);
+                for _, targetIndex in ipairs(targetIndexes) do
+                    local targetUnit = self.Board[targetIndex];
+                    local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
+                    table.insert(targetInfo, eventTargetInfo);
+                end
+                self:AddEvent(spell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
             end
-            self:AddEvent(sourceUnit.PassiveSpell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
         end
     end
 end
@@ -636,13 +630,14 @@ function GarrAutoBoard:AdddCheckpoint(index)
 
     local text = table.concat(checkpoint, "_");
     if index then
-        self.Checkpoints[index] = text;
+        self.CheckPoints[index] = text;
     else
-        table.insert(self.Checkpoints, text);
+        table.insert(self.CheckPoints, text);
     end
 
-    if self.Checkpoints[#self.Checkpoints] == self.Checkpoints[#self.Checkpoints-1] then
-        self.Checkpoints[#self.Checkpoints] = nil;
+    local idx = #self.CheckPoints;
+    if self.CheckPoints[idx] == self.CheckPoints[idx-1] then
+        self.CheckPoints[idx] = nil;
     end
 end
 

@@ -20,7 +20,7 @@ function GarrAutoSpell:New(spellInfo)
     local obj = {
         SpellID      = spellInfo.SpellID,
         Cooldown     = spellInfo.Cooldown,
-        Duration     = spellInfo.Duration,
+        Duration     = spellInfo.IsPassive and 1000 or spellInfo.Duration,
         Flags        = spellInfo.Flags,
         SchoolMask   = spellInfo.SchoolMask,
         IsPassive    = spellInfo.IsPassive or false,
@@ -66,6 +66,7 @@ GarrAutoAura = {
     BaseValue     = 0,
     SourceIndex   = 0,
     Duration      = 0,
+    IsPassive     = false,
     Name          = ""
 };
 
@@ -79,6 +80,7 @@ function GarrAutoAura:New(effect, effectBaseValue, sourceIndex, duration, name)
         Flags      = effect.Flags,
         Period     = effect.Period,
         Points     = effect.Points,
+        IsPassive  = effect.IsPassive,
         BaseValue  = effectBaseValue;
         SourceIndex= sourceIndex;
         Duration   = duration or 0;
