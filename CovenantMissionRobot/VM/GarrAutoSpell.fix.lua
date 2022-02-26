@@ -47,7 +47,12 @@ function T.ApplySpellFixes()
     -- Some presetups
     for s, spell in pairs(T.GARR_AUTO_SPELL) do
         T.GARR_AUTO_SPELL[s].IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
-        T.GARR_AUTO_SPELL[s].IsPassive = T.PASSIVE_SPELLS[s] == 1;
+        if T.PASSIVE_SPELLS[s] == 1 then
+            T.GARR_AUTO_SPELL[s].IsPassive = true;
+            T.GARR_AUTO_SPELL[s].Duration = 1000;
+        else
+            T.GARR_AUTO_SPELL[s].IsPassive = false;
+        end
 
         for _, effect in ipairs(spell.Effects) do
             local tt = effect.TargetType;

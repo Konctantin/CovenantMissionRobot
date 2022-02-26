@@ -122,24 +122,24 @@ local garrautocombatant = loadcsv("wow_csv/garrautocombatant.csv", "ID");
 local garrencounter = loadcsv("wow_csv/garrencounter.csv", "ID");
 local garrmissionxencounter = loadcsv("wow_csv/garrmissionxencounter.csv", "ID");
 
-local function GetPassiveSpells()
+local function WritePassiveSpells(file)
     -- passive spells
-    local spells = {}
+    local spells = { }
     for _, v in pairs(garrautocombatant) do
         local spellid = tonumber(v.PassiveSpellID);
         if spellid> 0 then
             spells[spellid] = 1
         end
     end
-    local s="T.PASSIVE_SPELLS = { "
+
+    file:write("T.PASSIVE_SPELLS = { ")
     for i, v in sortedPairs(spells) do
-        s=s..string.format("[%d]=%d, ", i, v)
+        file:write(string.format("[%d]=%d, ", i, v));
     end
-    s=s.."};"
-    return s;
+    file:write("};");
 end
 
-local function GetFolloversAA()
+local function WriteFolloversAA(file)
     local spells = {}
     -- AttackSpellID,AbilitySpellID,Role
     for k, v in pairs(garrfollower) do
@@ -156,12 +156,12 @@ local function GetFolloversAA()
         end
     end
 
-    local s="T.FOLLOWERS_AUTO_ATTACK = { "
+    file:write("-- [FirstSpellID] = (11-meele/15-range spell id)\n");
+    file:write("T.FOLLOWERS_AUTO_ATTACK = { ")
     for i, v in sortedPairs(spells) do
-        s=s..string.format("[%d]=%d, ", i, v)
+        file:write(string.format("[%d]=%d, ", i, v));
     end
-    s=s.."};"
-    return s;
+    file:write("};");
 end
 
 local function WriteEnemiesAA(file)
@@ -185,6 +185,7 @@ local function WriteEnemiesAA(file)
     end
 
     file:write("T.ENEMIES_AUTO_ATTACK = {\n");
+    file:write("    -- [boardIndex] = {[missionId]=11-meele/15-range}\n")
     for b, ml in sortedPairs(set) do
         file:write(string.format("    [%02i] = { ", b))
         for m, s in sortedPairs(ml) do
@@ -192,7 +193,7 @@ local function WriteEnemiesAA(file)
         end
         file:write("},\n");
     end
-    file:write("\n};");
+    file:write("};");
 end
 
 local function WriteSpells(file)
@@ -228,13 +229,16 @@ local file = io.open("CovenantMissionRobot/VM/Tables.g.lua", "w");
 
 file:write(HEADER)
 
-file:write(GetPassiveSpells())
+WritePassiveSpells(file);
 file:write("\n\n")
-file:write(GetFolloversAA())
+
+WriteFolloversAA(file);
 file:write("\n\n")
+
 WriteEnemiesAA(file);
 file:write("\n\n");
 
 WriteSpells(file);
+file:write("\n");
 
 file:close();

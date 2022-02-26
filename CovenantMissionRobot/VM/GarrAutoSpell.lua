@@ -20,7 +20,7 @@ function GarrAutoSpell:New(spellInfo)
     local obj = {
         SpellID      = spellInfo.SpellID,
         Cooldown     = spellInfo.Cooldown,
-        Duration     = spellInfo.IsPassive and 1000 or spellInfo.Duration,
+        Duration     = spellInfo.Duration,
         Flags        = spellInfo.Flags,
         SchoolMask   = spellInfo.SchoolMask,
         IsPassive    = spellInfo.IsPassive or false,
