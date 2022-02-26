@@ -149,9 +149,9 @@ local function WriteFolloversAA(file)
             local spellid = tonumber(follower.AbilitySpellID);
             local aa = tonumber(follower.AttackSpellID);
             if aa == 11 and (r==0 or r==2 or r==3 or r==4) then
-                spells[spellid] = 11;
+                spells[spellid] = aa;
             elseif aa == 15 and (r==1 or r==5) then
-                spells[spellid] = 15;
+                spells[spellid] = aa;
             end
         end
     end
@@ -176,10 +176,10 @@ local function WriteEnemiesAA(file)
             local r = tonumber(gac.Role);
             if aa == 11 and (r==0 or r==2 or r==3 or r==4) then
                 if not set[b] then set[b]={} end
-                set[b][m] = 11;
+                set[b][m] = aa;
             elseif aa == 15 and (r==1 or r==5) then
                 if not set[b] then set[b]={} end
-                set[b][m] = 15;
+                set[b][m] = aa;
             end
         end
     end
@@ -213,8 +213,8 @@ local function WriteSpells(file)
                 file:write(string.format("{ ID = %03d", tonumber(effect.ID)));
                 file:write(string.format(", SpellID = %03d", sid));
                 file:write(", EffectIndex = "..tostring(effect.EffectIndex));
-                file:write(string.format(", Effect =  %02d", tonumber(effect.Effect)));
-                file:write(string.format(", TargetType =  %02d", tonumber(effect.TargetType)));
+                file:write(string.format(", Effect = %02d", tonumber(effect.Effect)));
+                file:write(string.format(", TargetType = %02d", tonumber(effect.TargetType)));
                 file:write(string.format(", Flags = 0x%02x", tonumber(effect['Flags'])));
                 file:write(", Period = "..tostring(effect.Period));
                 file:write(", Points = "..tostring(effect.Points).." },\n");
@@ -223,6 +223,108 @@ local function WriteSpells(file)
         file:write("    } },\n")
     end
     file:write("};")
+end
+
+local function WriteSql(sql)
+    local HEADER_STR = [[-- This file was created by ./tools/generator.lua
+-- !!! Do not modify this file manually !!!
+
+use [wow];
+GO
+
+DROP TABLE IF EXISTS [wow].[dbo].[GarrAutoSpell];
+GO
+
+CREATE TABLE [wow].[dbo].[GarrAutoSpell] (
+    [ID]               int primary key,
+    [Name_lang]        varchar(100) null,
+    [Description_lang] varchar(1000) null,
+    [Cooldown]         int not null,
+    [Duration]         int not null,
+    [Flags]            int not null, -- 1-No initial cast
+    [SchoolMask]       int not null, -- 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
+    [IconFileDataID]   int not null,
+    [SchoolMaskName] as (case [SchoolMask]
+            when 1 then 'Physical'
+            when 2 then 'Holly'
+            when 4 then 'Fire'
+            when 8 then 'Nature'
+            when 16 then 'Frost'
+            when 32 then 'Shadow'
+            when 64 then 'Arcane'
+        else cast(SchoolMask as varchar) end)
+);
+GO
+
+DROP TABLE IF EXISTS [wow].[dbo].[GarrAutoSpellEffect];
+GO
+
+CREATE TABLE [wow].[dbo].[GarrAutoSpellEffect] (
+    [ID]          int primary key,
+    [SpellID]     int not null,
+    [EffectIndex] int not null,
+    [Effect]      int not null, -- [wow].[dbo].[SpellEffectTypes]
+    [Points]      float not null,
+    [TargetType]  int not null, -- [wow].[dbo].[TargetTypes]
+    [Flags]       int not null, -- 1-Use attack for points, 2-Extra inital period
+    [Period]      int not null,
+    [EffectName] as (case [Effect]
+            when 01 then 'Damage'
+            when 02 then 'Heal'
+            when 03 then 'Damage'
+            when 04 then 'Heal'
+            when 07 then 'DoT'
+            when 08 then 'HoT'
+            when 09 then 'Taunt'
+            when 10 then 'Untargetable'
+            when 11 then 'Dealt multiplier'
+            when 12 then 'Dealt multiplier'
+            when 13 then 'Taken multiplier'
+            when 14 then 'Taken multiplier'
+            when 15 then 'Reflect'
+            when 16 then 'Reflect'
+            when 18 then 'Max HP multiplier'
+            when 19 then 'Add dmg dealt'
+            when 20 then 'Add receive dmg'
+        else cast([Effect] as varchar) end),
+    [TargetTypeName] as (case [TargetType]
+            when 01 then 'Self'
+            when 02 then 'Adjacent ally'
+            when 03 then 'Closest enemy'
+            when 05 then 'Ranged enemy'
+            when 06 then 'All allies'
+            when 07 then 'All enemies'
+            when 08 then 'All adjacent allies'
+            when 09 then 'All adjacent enemies'
+            when 10 then 'Closest ally cone'
+            when 11 then 'Closest enemy cone'
+            when 13 then 'Closest enemy line'
+            when 14 then 'Front line allies'
+            when 15 then 'Front line enemies'
+            when 16 then 'Back line allies'
+            when 17 then 'Back line enemies'
+            when 19 then 'Random enemy'
+            when 20 then 'Random enemy'
+            when 21 then 'Random ally'
+            when 22 then 'All allies'
+            when 23 then 'All allies'
+        else cast([TargetType] as varchar) end)
+);
+GO
+]]
+
+sql:write(HEADER_STR);
+    for _, row in sortedPairs(garrautospell) do
+        local name = string.gsub(trim(row['Name_lang']), "'", "''")
+        local desc = string.gsub(trim(row['Description_lang']), "'", "''");
+        sql:write(string.format("INSERT INTO [wow].[dbo].[GarrAutoSpell] VALUES (%s, '%s', '%s', %s, %s, %s, %s, %s);\n",
+            row.ID, name, desc, row.Cooldown, row.Duration, row.Flags, row.SchoolMask, row.IconFileDataID));
+    end
+
+    for _, row in sortedPairs(garrautospelleffect) do
+        sql:write(string.format("INSERT INTO [wow].[dbo].[GarrAutoSpellEffect] VALUES (%s, %s, %s, %s, %s, %s, %s, %s);\n",
+            row.ID, row.SpellID, row.EffectIndex, row.Effect, row.Points, row.TargetType, row.Flags, row.Period));
+    end
 end
 
 local file = io.open("CovenantMissionRobot/VM/Tables.g.lua", "w");
@@ -241,4 +343,10 @@ file:write("\n\n");
 WriteSpells(file);
 file:write("\n");
 
+file:flush();
 file:close();
+
+local sql = io.open("wow_csv/SqlTables.g.sql", "w");
+WriteSql(sql);
+sql:flush();
+sql:close();

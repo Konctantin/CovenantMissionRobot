@@ -23,19 +23,24 @@ function GarrAutoSpell:New(spellInfo)
         Duration     = spellInfo.Duration,
         Flags        = spellInfo.Flags,
         SchoolMask   = spellInfo.SchoolMask,
-        IsPassive    = spellInfo.IsPassive or false,
-        IsAutoAttack = spellInfo.IsAutoAttack or false,
+        IsPassive    = spellInfo.IsPassive,
+        IsAutoAttack = spellInfo.IsAutoAttack,
         Name         = spellInfo.Name,
         Effects      = spellInfo.Effects,
-        CurCD        = spellInfo.Flags == 1 and spellInfo.Cooldown or 0,
         HasRandom    = spellInfo.HasRandomEffect or false,
-        WasCasted    = false,
     };
 
     self.__index = self;
     setmetatable(obj, self);
 
+    obj:Reset();
+
     return obj;
+end
+
+function GarrAutoSpell:Reset()
+    self.CurCD = self.Flags == 1 and self.Cooldown or 0;
+    self.WasCasted = false;
 end
 
 function GarrAutoSpell:StartCD()
