@@ -128,6 +128,12 @@ local function PrepareVP(missionLog)
     return sim;
 end
 
+local function CompareTypes(t1,t2)
+    return t1 == t2
+        or (t1 == 2 and t2 == 3)
+        or (t1 == 3 and t2 == 2);
+end
+
 local function PrintComparedLogs(sim, log, onlyFails)
     local n = 1;
     for r = 1, math.min(#sim, #log) do
@@ -147,7 +153,7 @@ local function PrintComparedLogs(sim, log, onlyFails)
                 (event1.casterBoardIndex == event2.casterBoardIndex) and
                 (event1.spellID == event2.spellID) and
                 --(event2.effectIndex or -1 == event2.effectIndex) and -- todo: fix it
-                (event1.type == event2.type) and
+                CompareTypes(event1.type, event2.type) and
                 (target1.BoardIndex == target2.boardIndex) and
                 (target1.OldHP == target2.oldHealth) and
                 (target1.NewHP == target2.newHealth) and

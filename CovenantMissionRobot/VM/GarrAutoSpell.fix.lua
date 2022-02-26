@@ -1,39 +1,13 @@
 local _, T = ...;
 
-local AUTO_ATTACK    = { [11]=1, [15]=1 };
-local PASSIVE_SPELLS = { [47]=1, [82]=1, [90]=1, [105]=1, [109]=1 };
-
-local AUTO_TROOP_SPELLS = {
-    [1]=1, [2]=1, -- night fae
-    [3]=1, [4]=1, --
-    [5]=1, [6]=1, --
-    [7]=1, [8]=1, -- necrolord
-};
-
-local M, R = 11, 15;
-local enemieTable = {
-    -- [boardIndex] = {[missionId]=M (meele spell id)}
-    [05] = { [2172]=M,[2176]=M,[2196]=M,[2207]=M,[2209]=M,[2202]=M,[2214]=M,[2312]=M,[2304]=M },
-    [06] = { [2304]=M,[2305]=M,[2311]=M,[2314]=M,[2315]=M,[2316]=M,[2317]=M,[2260]=M,[2209]=M,[2213]=M,[2176]=M,[2196]=M,[2207]=M,[2169]=M },
-    [07] = { [2169]=M,[2172]=M,[2176]=M,[2196]=M,[2209]=M,[2207]=M,[2260]=M,[2305]=M,[2304]=M },
-    [08] = { [2305]=M,[2304]=M,[2214]=M,[2207]=M,[2209]=M,[2196]=M,[2176]=M,[2172]=M },
-    [09] = { [2204]=M,[2208]=M,[2239]=M,[2212]=M,[2252]=M,[2293]=M,[2298]=M,[2313]=M,[2259]=M,[2301]=M,[2307]=M,[2304]=M,[2303]=M },
-    [10] = { [2304]=M,[2307]=M,[2303]=M,[2298]=M,[2252]=M,[2239]=M,[2243]=M,[2212]=M,[2201]=M,[2238]=M,[2241]=M,[2205]=M,[2169]=M },
-    [11] = { [2169]=M,[2172]=M,[2209]=M,[2208]=M,[2205]=M,[2214]=M,[2224]=M,[2239]=M,[2259]=M,[2303]=M,[2287]=M,[2279]=M,[2252]=M,[2307]=M,[2304]=M },
-    [12] = { [2304]=M,[2307]=M,[2298]=M,[2293]=M,[2303]=M,[2313]=M,[2252]=M,[2212]=M,[2239]=M,[2215]=M,[2204]=M,[2208]=M },
-};
-
--- [FirstSpellID] = M (meele spell id)
-local followerTable = { [14]=M, [45]=M, [85]=M, [194]=M, [303]=M, [306]=M, [309]=M, [314]=M, [325]=M };
-
 function GetAutoAttackSpellId(role, missionId, boardIndex, firstSpell)
     -- Default: meele or tank
-    local attackSpellId = (role == 1 or role == 5) and M or R;
+    local attackSpellId = (role == 1 or role == 5) and 11 or 15;
 
     if (boardIndex or 0) > 4 and missionId then
-        attackSpellId = enemieTable[boardIndex] and enemieTable[boardIndex][missionId] or attackSpellId;
+        attackSpellId = T.ENEMIES_AUTO_ATTACK[boardIndex] and T.ENEMIES_AUTO_ATTACK[boardIndex][missionId] or attackSpellId;
     elseif firstSpell then
-        attackSpellId = followerTable[firstSpell] or attackSpellId;
+        attackSpellId = T.FOLLOWERS_AUTO_ATTACK[firstSpell] or attackSpellId;
     end
 
     return attackSpellId;
@@ -72,8 +46,8 @@ function T.ApplySpellFixes()
 
     -- Some presetups
     for s, spell in pairs(T.GARR_AUTO_SPELL) do
-        T.GARR_AUTO_SPELL[s].IsAutoAttack = AUTO_ATTACK[s] == 1;
-        T.GARR_AUTO_SPELL[s].IsPassive = PASSIVE_SPELLS[s] == 1;
+        T.GARR_AUTO_SPELL[s].IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
+        T.GARR_AUTO_SPELL[s].IsPassive = T.PASSIVE_SPELLS[s] == 1;
 
         for _, effect in ipairs(spell.Effects) do
             local tt = effect.TargetType;
@@ -81,7 +55,7 @@ function T.ApplySpellFixes()
                 spell.HasRandomEffect = true;
             end
 
-            effect.IsPassive = PASSIVE_SPELLS[s] == 1;
+            effect.IsPassive = T.PASSIVE_SPELLS[s] == 1;
 
             effect.IsAura   = effect.Effect >= 7;
             effect.IsDamage = effect.Effect == 1 or effect.Effect == 3;

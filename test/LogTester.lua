@@ -9,8 +9,8 @@ _G.bit = loadfile('libs/bit.lua')();
 -- Init like wow addons
 print('Start loading simulator...');
 
+loadfile('CovenantMissionRobot/VM/Tables.g.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/TargetManager.lua')(T.Name, T);
-loadfile('CovenantMissionRobot/VM/GarrAutoSpell.g.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/GarrAutoSpell.fix.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/GarrAutoSpell.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/GarrAutoCombatant.lua')(T.Name, T);

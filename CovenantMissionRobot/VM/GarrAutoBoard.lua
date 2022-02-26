@@ -449,7 +449,7 @@ function GarrAutoBoard:CastSpellEffect(sourceUnit, targetUnit, spell, effect, is
         MaxHP = targetUnit.MaxHP,
         OldHP = oldTargetHP,
         NewHP = targetUnit.CurHP,
-        Points     = value
+        Points = value
     };
 end
 

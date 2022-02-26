@@ -1,4 +1,4 @@
-ID,GarrEncounterID,GarrEncounterSetID,OrderIndex,Field_9_0_1_33978_004,GarrMissionID
+ID,GarrEncounterID,GarrEncounterSetID,OrderIndex,BoardIndex,GarrMissionID
 57,1,0,0,-1,43
 58,1,0,0,-1,2
 63,32,0,0,-1,44

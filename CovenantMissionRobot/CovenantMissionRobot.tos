@@ -5,8 +5,8 @@
 ## RequiredDep: Blizzard_GarrisonTemplates
 ## SavedVariables: CMR_DB
 
+VM/Tables.g.lua
 VM/TargetManager.lua
-VM/GarrAutoSpell.g.lua
 VM/GarrAutoSpell.fix.lua
 VM/GarrAutoSpell.lua
 VM/GarrAutoCombatant.lua
