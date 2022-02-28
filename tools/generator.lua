@@ -127,8 +127,8 @@ local function WritePassiveSpells(file)
     local spells = { }
     for _, v in pairs(garrautocombatant) do
         local spellid = tonumber(v.PassiveSpellID);
-        if spellid> 0 then
-            spells[spellid] = 1
+        if spellid > 0 then
+            spells[spellid] = 1;
         end
     end
 

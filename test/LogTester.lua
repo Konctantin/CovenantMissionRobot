@@ -32,9 +32,9 @@ T.ApplySpellFixes();
     1) Aura 91 Dazzledust (attack:205*points:-0.6=-123) need -124 ??? but global result is ok (log: 16423565370004)
 ]]
 
-for i, report in ipairs(VP_MissionReports) do
-    if i < 10 then
-    --if missionLog.id == '16423565370004' then
+for _, report in ipairs(VP_MissionReports) do
+    --if i < 10 then
+    if report.id == '16423565380005' then
         print("");
         print(string.format("LogID: %s Mission: %d", report.id, report.missionID));
 
@@ -46,23 +46,36 @@ for i, report in ipairs(VP_MissionReports) do
         print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
         print("Log: "..(isOK and "OK" or "Broken!"))
 
+        for i=0,12 do
+            local u = cmr.Board[i];
+            if u then
+                print(string.format("[%i] %s", i, u.Name));
+                for _, s in ipairs(u.Spells) do
+                    print(string.format("  [%03i] %s", s.SpellID, s.Name));
+                end
+            end
+        end
+
         cmr:Run();
 
-        T.PrintComparedLogs(cmr.Log, report.log, true);
+        T.PrintComparedLogs(cmr.Log, report.log, false);
         print("");
         --vp:Run();
 
+        local isOk = true;
         for r = 0, math.max(#cmr.CheckPoints, #baseCheckpoints) do
             local l1 = cmr.CheckPoints[r];
             --local l2 = vp.checkpoints[r];
             local l3 = baseCheckpoints[r];
 
             if l1 == l3 then
-                print(r, l1, "==> OK!");
+                --print(r, l1, "==> OK!");
             else
                 print(r, l1, l3);
+                isOk = false;
             end
         end
+        print("Simulation: "..tostring(isOk))
     end
 end
 

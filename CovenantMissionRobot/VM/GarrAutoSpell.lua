@@ -75,22 +75,18 @@ GarrAutoAura = {
     Name          = ""
 };
 
-function GarrAutoAura:New(effect, effectBaseValue, sourceIndex, duration, name)
+function GarrAutoAura:New(spell, effect, sourceIndex, value)
     local obj = {
-        ID         = effect.ID,
-        Effect     = effect.Effect,
-        EffectIndex= effect.EffectIndex,
-        SpellID    = effect.SpellID,
-        TargetType = effect.TargetType,
-        Flags      = effect.Flags,
-        Period     = effect.Period,
-        Points     = effect.Points,
-        IsPassive  = effect.IsPassive,
-        BaseValue  = effectBaseValue;
-        SourceIndex= sourceIndex;
-        Duration   = duration or 0;
-        Name       = name;
+        Duration     = spell.Duration;
+        Name         = spell.Name;
+        IsAutoAttack = spell.IsAutoAttack,
+        SourceIndex  = sourceIndex;
+        BaseValue    = value;
     };
+
+    for k, v in pairs(effect) do
+        obj[k] = v;
+    end
 
     obj.Period        = math.max(obj.Period - 1, 0);
     obj.CurrentPeriod = math.max(obj.Period, 0);

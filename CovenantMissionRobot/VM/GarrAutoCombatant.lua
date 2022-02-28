@@ -36,7 +36,6 @@ function GarrAutoCobatant:New(unitInfo, missionId)
         Reflect      = 0,
         DeathSeq     = 0,
         Spells       = { },
-        PassiveSpell = nil,
         Auras        = { }
     };
 
@@ -46,6 +45,18 @@ function GarrAutoCobatant:New(unitInfo, missionId)
     obj:SetupSpells(unitInfo.autoCombatSpells);
 
     return obj;
+end
+
+function GarrAutoCobatant:Reset()
+    self.CurHP = self.StartHP;
+    self.TauntedBy = nil;
+    self.Untargetable = false;
+    self.Reflect = 0;
+    self.DeathSeq = 0;
+    self.Auras = {};
+    for _, spell in ipairs(self.Spells) do
+        spell:Reset();
+    end
 end
 
 function GarrAutoCobatant:SetupSpells(autoCombatSpells)
@@ -80,7 +91,7 @@ function GarrAutoCobatant:GetAvailableSpells()
     local result = { };
 
     for _, spell in ipairs(self.Spells) do
-        if spell.CurCD == 0 then
+        if not spell.IsPassive and spell.CurCD == 0 then
             table.insert(result, spell);
         end
     end

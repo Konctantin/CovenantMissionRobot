@@ -46,15 +46,16 @@ function T.ApplySpellFixes()
 
     -- Some presetups
     for s, spell in pairs(T.GARR_AUTO_SPELL) do
-        T.GARR_AUTO_SPELL[s].IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
+        spell.IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
         if T.PASSIVE_SPELLS[s] == 1 then
-            T.GARR_AUTO_SPELL[s].IsPassive = true;
-            T.GARR_AUTO_SPELL[s].Duration = 1000;
+            spell.IsPassive = true;
+            spell.Duration = 1000;
         else
-            T.GARR_AUTO_SPELL[s].IsPassive = false;
+            spell.IsPassive = false;
         end
 
         for _, effect in ipairs(spell.Effects) do
+            local ef = effect.Effect;
             local tt = effect.TargetType;
             if tt == 19 or tt == 20 or tt == 21 then
                 spell.HasRandomEffect = true;
@@ -62,9 +63,21 @@ function T.ApplySpellFixes()
 
             effect.IsPassive = T.PASSIVE_SPELLS[s] == 1;
 
-            effect.IsAura   = effect.Effect >= 7;
-            effect.IsDamage = effect.Effect == 1 or effect.Effect == 3;
-            effect.IsHeal   = effect.Effect == 2 or effect.Effect == 4;
+            effect.IsAura         = ef >= 7;
+            effect.IsDamage       = ef == 1 or ef == 3;
+            effect.IsHeal         = ef == 2 or ef == 4;
+            effect.IsTaunt        = ef == 9;
+            effect.IsDot          = ef == 7;
+            effect.IsHot          = ef == 8;
+            effect.IsDotHot       = ef == 7 or ef == 8;
+            effect.IsUntargetable = ef == 10;
+            effect.IsReflect      = ef == 15 or ef == 16;
+            effect.UsePoints      = ef == 11 -- DamageDealtMultiplier ??? todo: check it
+                                 or ef == 12 -- DamageDealtMultiplier_2
+                                 or ef == 13 -- DamageTakenMultiplier
+                                 or ef == 14 -- DamageTakenMultiplier_2
+                                 or ef == 15 -- Reflect
+                                 or ef == 16;-- Reflect_2
         end
     end
 end

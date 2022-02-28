@@ -645,7 +645,8 @@ TargetManager = { };
 
 function TargetManager:GetTargetIndexes(sourceIndex, targetType, boardUnits, mainTarget)
     local func = FunctionTable[targetType];
-    return func(sourceIndex, targetType, boardUnits, mainTarget);
+    local indexes = func(sourceIndex, targetType, boardUnits, mainTarget);
+    return indexes;
 end
 
 T.TargetManager = TargetManager;
