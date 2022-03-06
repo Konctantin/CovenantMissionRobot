@@ -28,6 +28,9 @@ function GarrAutoSpell:New(spellInfo)
         Name         = spellInfo.Name,
         Effects      = spellInfo.Effects,
         HasRandom    = spellInfo.HasRandomEffect or false,
+        -- this is for a nice debugging
+        NameDef      = spellInfo.NameDef,
+        Description  = spellInfo.Description
     };
 
     self.__index = self;

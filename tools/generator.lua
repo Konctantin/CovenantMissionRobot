@@ -8,18 +8,18 @@ local _, T = ...;
 -- SpellInfo:
 --  Cooldown - Cooldovn in seconds
 --  Duration - Duration in rounds
---  Flags - 1-No initial cast
+--  Flags - 1-Has start CD
 --  SchoolMask = 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
 
 -- SpellEffectInfo:
 --  Effect - See Effect type list
 --  Points - Points or value of effect
 --  TargetType - See Target type list
---  Flags - 1-Use attack for points, 2-Extra inital period
---  Period - Duration the spell effect
+--  Flags - 1-Attack for points, 2-Tick after apply
+--  Period - Period of effect
 
 -- Effect type list:
---  00 - For spellID = 17 only
+--  00 - Does'nt work, just remove it
 --  01 - Damage
 --  02 - Heal
 --  03 - Damage
@@ -35,12 +35,11 @@ local _, T = ...;
 --  15 - Reflect
 --  16 - Reflect
 --  17 - Test ability ???
---  18 - Maximum health multiplier
+--  18 - Maximum HP multiplier
 --  19 - Additional damage dealt
 --  20 - Additional receive damage
 
 -- Target type list:
---  00 - Last target
 --  01 - Self
 --  02 - Adjacent ally
 --  03 - Closest enemy
@@ -67,26 +66,23 @@ T.AUTO_ATTACK_SPELLS = { [11]=1, [15]=1 };
 
 ]]
 
-local function trim (str)
+local function trim(str)
     if str == '' then
-      return str
+        return str;
     else
-      local startPos = 1
-      local endPos   = #str
-
-      while (startPos < endPos and str:byte(startPos) <= 32) do
-        startPos = startPos + 1
-      end
-
-      if startPos >= endPos then
-        return ''
-      else
-        while (endPos > 0 and str:byte(endPos) <= 32) do
-          endPos = endPos - 1
+        local startPos = 1;
+        local endPos = #str;
+        while (startPos < endPos and str:byte(startPos) <= 32) do
+            startPos = startPos + 1;
         end
-
-        return str:sub(startPos, endPos)
-      end
+        if startPos >= endPos then
+            return '';
+        else
+            while (endPos > 0 and str:byte(endPos) <= 32) do
+                endPos = endPos - 1;
+            end
+            return str:sub(startPos, endPos);
+        end
     end
 end
 
@@ -103,14 +99,14 @@ end
 local function sortedPairs(t, sort)
 	local keys = {};
 	for k in pairs(t) do
-		keys[#keys+1] = k
+		keys[#keys+1] = k;
 	end
-	table.sort(keys, sort)
-	local i = 0
+	table.sort(keys, sort);
+	local i = 0;
 	return function()
-		i = i+1
+		i = i + 1;
 		if keys[i] then
-			return keys[i], t[keys[i]]
+			return keys[i], t[keys[i]];
 		end
 	end
 end
@@ -121,6 +117,14 @@ local garrfollower = loadcsv("wow_csv/garrfollower.csv", "ID");
 local garrautocombatant = loadcsv("wow_csv/garrautocombatant.csv", "ID");
 local garrencounter = loadcsv("wow_csv/garrencounter.csv", "ID");
 local garrmissionxencounter = loadcsv("wow_csv/garrmissionxencounter.csv", "ID");
+
+local function WriteHexTable(file)
+    file:write("T.HEX_TABLE = { [0]=");
+    for i = 0, 0xf do
+        file:write(string.format('"%x",', i));
+    end
+    file:write(" };")
+end
 
 local function WritePassiveSpells(file)
     -- passive spells
@@ -196,14 +200,32 @@ local function WriteEnemiesAA(file)
     file:write("};");
 end
 
+local function WriteAutoTroopSpells(file)
+    local spells = { };
+    for _, gf in pairs(garrfollower) do
+        if gf.Flags == "18" and gf.FollowerLevel == "20" and tonumber(gf.CovenantID) > 0 then
+            local gac = garrautocombatant[tonumber(gf.AutoCombatantID)];
+            if gac then
+                table.insert(spells, tonumber(gac.AbilitySpellID));
+            end
+        end
+    end
+    file:write("T.GARR_AUTO_TROOP_SPELLS = {");
+    table.sort(spells);
+    for _, s in ipairs(spells) do
+        file:write(string.format(" [%i]=1,", s));
+    end
+    file:write(" };")
+end
+
 local function WriteSpells(file)
-    file:write("T.GARR_AUTO_SPELL = {")
+    file:write("T.GARR_AUTO_SPELL = {\n")
     for sid, spell in sortedPairs(garrautospell) do
-        file:write("\n    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
+        --file:write("    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
         file:write(string.format("    [%03d] = { SpellID = %03d", sid, sid));
-        file:write(", Cooldown = "..tostring(spell.Cooldown));
-        file:write(", Duration = "..tostring(spell.Duration));
-        file:write(", Flags = "..tostring(spell.Flags));
+        file:write(string.format(", Cooldown = %s", spell.Cooldown));
+        file:write(string.format(", Duration = %s", spell.Duration));
+        file:write(string.format(", Flags = %s", spell.Flags));
         file:write(string.format(", SchoolMask = 0x%02x", tonumber(spell.SchoolMask)));
         file:write(", Effects = {\n");
 
@@ -212,15 +234,18 @@ local function WriteSpells(file)
                 file:write("        ");
                 file:write(string.format("{ ID = %03d", tonumber(effect.ID)));
                 file:write(string.format(", SpellID = %03d", sid));
-                file:write(", EffectIndex = "..tostring(effect.EffectIndex));
+                file:write(string.format(", EffectIndex = %s", effect.EffectIndex));
                 file:write(string.format(", Effect = %02d", tonumber(effect.Effect)));
                 file:write(string.format(", TargetType = %02d", tonumber(effect.TargetType)));
                 file:write(string.format(", Flags = 0x%02x", tonumber(effect['Flags'])));
-                file:write(", Period = "..tostring(effect.Period));
-                file:write(", Points = "..tostring(effect.Points).." },\n");
+                file:write(string.format(", Period = %s", effect.Period));
+                file:write(string.format(", Points = %s", effect.Points));
+                file:write(" },\n");
             end
         end
-        file:write("    } },\n")
+        file:write("        },\n");
+        file:write(string.format('        NameDef = "%s", Description = "%s"\n', trim(spell.Name_lang), trim(spell.Description_lang)));
+        file:write("    },\n")
     end
     file:write("};")
 end
@@ -329,15 +354,21 @@ end
 
 local file = io.open("CovenantMissionRobot/VM/Tables.g.lua", "w");
 
-file:write(HEADER)
+file:write(HEADER);
+
+WriteHexTable(file);
+file:write("\n\n");
 
 WritePassiveSpells(file);
-file:write("\n\n")
+file:write("\n\n");
 
 WriteFolloversAA(file);
-file:write("\n\n")
+file:write("\n\n");
 
 WriteEnemiesAA(file);
+file:write("\n\n");
+
+WriteAutoTroopSpells(file);
 file:write("\n\n");
 
 WriteSpells(file);

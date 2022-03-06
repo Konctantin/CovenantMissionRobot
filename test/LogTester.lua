@@ -32,9 +32,9 @@ T.ApplySpellFixes();
     1) Aura 91 Dazzledust (attack:205*points:-0.6=-123) need -124 ??? but global result is ok (log: 16423565370004)
 ]]
 
-for _, report in ipairs(VP_MissionReports) do
+for i, report in ipairs(VP_MissionReports) do
     --if i < 10 then
-    if report.id == '16423565380005' then
+    if report.id == '16423566050001' then
         print("");
         print(string.format("LogID: %s Mission: %d", report.id, report.missionID));
 
@@ -43,7 +43,7 @@ for _, report in ipairs(VP_MissionReports) do
         local cmr = T.PrepareCMR(report);
         --local vp = T.PrepareVP(missionLog);
 
-        print("HasRandom: "..(cmr.HasRandom and "YES" or "NO"));
+        print("HasRandom: "..(cmr.HasRandomSpells and "YES" or "NO"));
         print("Log: "..(isOK and "OK" or "Broken!"))
 
         for i=0,12 do

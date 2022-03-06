@@ -86,45 +86,46 @@ local generateCheckpoints do
     end
 end
 
-local function PrepareCMR(missionLog)
-    local env = nil
-    if missionLog.environment and missionLog.environment.autoCombatSpellInfo then
-        env = {
-            SpellID = missionLog.environment.autoCombatSpellInfo.autoCombatSpellID,
-            SpellName = missionLog.environment.autoCombatSpellInfo.name,
-            EnvironmentName = missionLog.environment.name
+local function PrepareCMR(missionLogInfo)
+    local environment = nil;
+    if missionLogInfo.environment and missionLogInfo.environment.autoCombatSpellInfo then
+        environment = {
+            SpellID = missionLogInfo.environment.autoCombatSpellInfo.autoCombatSpellID,
+            SpellName = missionLogInfo.environment.autoCombatSpellInfo.name,
+            EnvironmentName = missionLogInfo.environment.name
         };
     end
 
     local units = { };
-    for e, follower in pairs(missionLog.followers) do
+    for e, follower in pairs(missionLogInfo.followers) do
+        follower.IsAutoTroop  = T.ThisIsAutoTroops(follower.spells);
         follower.followerGUID = e;
         follower.autoCombatSpells = follower.spells;
         table.insert(units, follower);
     end
 
-    for _, encounter in ipairs(missionLog.encounters) do
+    for _, encounter in ipairs(missionLogInfo.encounters) do
         table.insert(units, encounter);
     end
 
-    local board = T.GarrAutoBoard:New(missionLog, units, env);
+    local board = T.GarrAutoBoard:New(missionLogInfo, units, environment);
     board.LogEnabled = true;
     return board;
 end
 
-local function PrepareVP(missionLog)
-    local envSpell = missionLog.environment
-        and missionLog.environment.autoCombatSpellInfo;
+local function PrepareVP(missionLogInfo)
+    local environmentSpell = missionLogInfo.environment
+        and missionLogInfo.environment.autoCombatSpellInfo;
 
     local sim = T.VSim:New(
-        missionLog.followers,
-        missionLog.encounters,
-        envSpell,
-        missionLog.missionID,
-        missionLog.missionScalar,
+        missionLogInfo.followers,
+        missionLogInfo.encounters,
+        environmentSpell,
+        missionLogInfo.missionID,
+        missionLogInfo.missionScalar,
         0);
 
-    sim:AddFightLogOracles(missionLog.log);
+    sim:AddFightLogOracles(missionLogInfo.log);
     return sim;
 end
 
