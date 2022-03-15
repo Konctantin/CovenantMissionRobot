@@ -1,7 +1,22 @@
 local _, T = ...;
 
+local pairs        = _G.pairs;
+local ipairs       = _G.ipairs;
+local math_frexp   = _G.math.frexp;
+local math_floor   = _G.math.floor;
+local math_min     = _G.math.min;
+local math_max     = _G.math.max;
+local table_insert = _G.table.insert;
+local table_sort   = _G.table.sort;
+local table_remove = _G.table.remove;
+local table_concat = _G.table.concat;
+
+local UseSimpleRounding = T.UseSimpleRounding;
+local PREDEFINED_POINTS = T.PREDEFINED_POINTS;
+local GarrAutoCobatant  = T.GarrAutoCobatant;
+local TargetManager     = T.TargetManager;
+
 local MAX_ROUNDS = 100;
-local RANDOM_SIMULATIONS = 100;
 
 local ET_MeleeDamage = 0;
 local ET_RangeDamage = 1;
@@ -34,21 +49,54 @@ local function GetLogEventType(effect)
     end
 end
 
+local function Extend(value)
+    local neg = value < 0;
+    local m, e = math_frexp(value);
+    m = neg and -m or m;
+
+    local lo = m % 2^-24;
+    local a = lo >= 2^-25 and (lo > 2^-25 or m % 2^-23 >= 2^-24) and 2^-24 or 0;
+    local rv = (m - lo + a) * 2^e;
+    local result = neg and -rv or rv;
+
+    return result;
+end
+
+local function RoundAttack(points, attack)
+    local up = PREDEFINED_POINTS[points] or Extend(points);
+    local val = attack * up;
+    local val2 = Extend(val);
+    local result = val2 - val2 % 1;
+    return result;
+end
+
+local function Round(points, attack)
+    if UseSimpleRounding then
+        local value = points * attack;
+        return math_floor(value);
+    else
+        return RoundAttack(points, attack);
+    end
+end
+
 -- GarrAutoBoard --
 
 local GarrAutoBoard = {
-    MissionID        = 0,
-    MissionScalar    = 0,
-    MissionName      = "",
-    Board            = { },
-    CheckPoints      = { },
-    Log              = { },
-    LogEnabled       = false,
-    HasRandomSpells  = false,
-    IsOver           = false,
-    IsWin            = false,
-    Round            = 1,
-    Event            = 1,
+    MissionID       = 0,
+    MissionScalar   = 0,
+    MissionName     = "",
+    Board           = { },
+    CheckPoints     = { },
+    Log             = { },
+    BlizzardLog     = nil,
+    LogEnabled      = false,
+    HasRandomSpells = false,
+    IsOver          = false,
+    IsWin           = false,
+    Round           = 1,
+    Event           = 1,
+    MinHP = { }, -- MinHP[boardIndex] = CurHP
+    MaxHP = { }, -- MaxHP[boardIndex] = CurHP
 };
 
 function GarrAutoBoard:New(mission, unitList, environment)
@@ -59,20 +107,23 @@ function GarrAutoBoard:New(mission, unitList, environment)
         Board = { },
         CheckPoints = { },
         Log = { },
+        BlizzardLog = nil,
         LogEnabled = false,
         IsOver = false,
         IsWin = false,
         Round = 1,
-        Event = 1
+        Event = 1,
+        MinHP = { }, -- MinHP[boardIndex] = CurHP
+        MaxHP = { }, -- MaxHP[boardIndex] = CurHP
     };
 
     if environment then
-        local envUnit = T.GarrAutoCobatant:NewEnv(environment, mission);
+        local envUnit = GarrAutoCobatant:NewEnv(environment, mission);
         self.Board[-1] = envUnit;
     end
 
     for _, unit in ipairs(unitList) do
-        local unitObj = T.GarrAutoCobatant:New(unit, mission.missionID);
+        local unitObj = GarrAutoCobatant:New(unit, mission.missionID);
         obj.Board[unitObj.BoardIndex] = unitObj;
     end
 
@@ -89,14 +140,23 @@ function GarrAutoBoard:New(mission, unitList, environment)
     return obj;
 end
 
+function GarrAutoBoard:SetupFollowers(folowers)
+    for i = 0, 4 do
+        self.Board[i] = nil;
+    end
+
+    for _, unit in ipairs(folowers) do
+        local unitObj = GarrAutoCobatant:New(unit);
+        self.Board[unitObj.BoardIndex] = unitObj;
+    end
+end
+
+function GarrAutoBoard:SetupBlizzardLog(log)
+    self.BlizzardLog = log;
+end
+
 function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targetInfo)
     if self.LogEnabled then
-        -- small hack
-        if eventType == ET_ApplyAura then
-            for _,v in ipairs(targetInfo) do
-                v.Points = 0;
-            end
-        end
         local event = {
             spellID = spell.SpellID,
             casterBoardIndex = casterBoardIndex,
@@ -108,11 +168,11 @@ function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targ
         };
 
         if not self.Log[self.Round] then
-            table.insert(self.Log, { events = {} })
+            table_insert(self.Log, { events = {} })
         end
 
         local round = self.Log[self.Round];
-        table.insert(round.events, event);
+        table_insert(round.events, event);
     end
 
     self.Event = self.Event + 1;
@@ -142,123 +202,22 @@ function GarrAutoBoard:GetTurnOrder()
             local ord = { BoardIndex = unit.BoardIndex,
                 Ord = (i < 5 and 1e9 or 2e9) - unit.CurHP * 1e3 + i + 20 * (unit.DeathSeq or 0)
             };
-            table.insert(sort_table, ord);
+            table_insert(sort_table, ord);
         end
     end
 
-    table.sort(sort_table, function(a, b) return (a.Ord < b.Ord) end);
+    table_sort(sort_table, function(a, b) return (a.Ord < b.Ord) end);
 
     for _, unit in pairs(sort_table) do
-        table.insert(order, unit.BoardIndex);
+        table_insert(order, unit.BoardIndex);
     end
 
     if self.Board[-1] then
-        table.insert(order, -1);
+        table_insert(order, -1);
     end
 
     return order;
 end;
-
-function GarrAutoBoard:ManageAppliedAura(sourceUnit)
-    local s = 1
-    for i = 1, #sourceUnit.Spells do
-        local spell = sourceUnit.Spells[i];
-        if spell and not spell.IsAutoAttack then
-            local removed_auras = { };
-
-            for u = 0, 12 do
-                local unit = self.Board[u];
-                if unit and unit:IsAlive() then
-                    local removed = self:ManageAura(unit, sourceUnit, sourceUnit.Spells[i]);
-                    for _, rinfo in ipairs(removed) do
-                        table.insert(removed_auras, rinfo);
-                    end
-                end
-            end
-
-            if #removed_auras > 0 then
-                local targets = { };
-                for _, v in ipairs(removed_auras) do
-                    local targetInfo = {
-                        BoardIndex = v.Unit.BoardIndex,
-                        MaxHP = v.Unit.MaxHP,
-                        OldHP = v.Unit.CurHP,
-                        NewHP = v.Unit.CurHP,
-                        Points = 0
-                    };
-                    table.insert(targets, targetInfo);
-                end
-                self:AddEvent(spell, nil, ET_RemoveAura, sourceUnit.BoardIndex, targets);
-            end
-        end
-    end
-end
-
-function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, spell, effect, value)
-    if effect.IsTaunt then
-        targetUnit.TauntedBy = sourceUnit.BoardIndex;
-    elseif effect.IsUntargetable then
-        targetUnit.Untargetable = true
-    elseif effect.IsReflect then
-        targetUnit.Reflect = value;
-    end
-
-    local aura = GarrAutoAura:New(spell, effect, sourceUnit.BoardIndex, value);
-    table.insert(targetUnit.Auras, aura);
-
-    -- extra initial period and DoT or HoT
-    if effect.IsDotOrHot and (effect.Flags == 2 or effect.Flags == 3) then
-        local targetInfo = {
-            BoardIndex = targetUnit.BoardIndex,
-            MaxHP = targetUnit.MaxHP,
-            OldHP = targetUnit.CurHP,
-            NewHP = targetUnit.CurHP,
-            Points = 0
-        }
-        self:AddEvent(aura, effect, ET_ApplyAura, sourceUnit.BoardIndex, { targetInfo });
-
-        self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
-    end
-end
-
-function GarrAutoBoard:ManageAura(targetUnit, sourceUnit, spell)
-    local removed_auras = { };
-
-    local i = 1;
-    while i <= #targetUnit.Auras do
-        local aura = targetUnit.Auras[i];
-        if aura.SourceIndex == sourceUnit.BoardIndex and aura.SpellID == spell.SpellID then
-            if aura.IsDotOrHot and (aura.CurrentPeriod == 0) then
-                local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
-                local logEventType = T.GetLogEventType(aura);
-                self:AddEvent(spell, aura, logEventType, sourceUnit.BoardIndex, {targetInfo});
-                if not targetUnit:IsAlive() then
-                    self:OnDie(sourceUnit, targetUnit, spell, targetInfo);
-                end
-            end
-
-            aura:DecRestTime();
-
-            -- Passive aura can be remove if source unit was died
-            if aura.Duration == 0 or (aura.IsPassive and not sourceUnit:IsAlive()) then
-                if aura.IsTaunt then
-                    targetUnit.TauntedBy = nil;
-                elseif aura.IsUntargetable then
-                    targetUnit.Untargetable = false;
-                elseif aura.IsReflect then
-                    targetUnit.Reflect = 0;
-                end
-
-                table.insert(removed_auras, { Aura = aura, Unit = targetUnit });
-                table.remove(targetUnit.Auras, i);
-                i = i - 1;
-            end
-        end
-        i = i + 1;
-    end
-
-    return removed_auras;
-end
 
 function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
     local auras = { };
@@ -290,7 +249,7 @@ function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
 
     for _, aura in ipairs(targetUnit.Auras) do
         -- AdditionalTakenDamage
-        if aura.Effect == 20 then
+        if (aura.Effect == 20) then
             addDamage = addDamage + aura.BaseValue;
         end
     end
@@ -301,7 +260,7 @@ function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
         multiplier2 = multiplier2 * (1 + v);
     end
 
-    local multiplier = math.max(dealt * taken, 0);
+    local multiplier = math_max(dealt * taken, 0);
     local result = multiplier * (value + addDamage);
     local result2 = multiplier2 * (value + addDamage);
 
@@ -312,11 +271,11 @@ function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
     local value = 0;
 
     if effect.IsReflect then
-        value = sourceUnit.Reflect;
+        value = Round(effect.Points, targetUnit.Attack);
     elseif effect.IsMaxHPMultilier then
-        value = math.floor(effect.Points * targetUnit.MaxHP);
+        value = Round(effect.Points, targetUnit.MaxHP);
     else
-        value = math.floor(effect.Points * sourceUnit.Attack);
+        value = Round(effect.Points, sourceUnit.Attack);
     end
 
     if effect.IsDamage or effect.IsDot or effect.IsReflect then
@@ -326,16 +285,119 @@ function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
         value = self:GetAdditionalDamage(sourceUnit, targetUnit, value);
     end
 
-    return math.max(math.floor(value + 0.00000000001), 0);
+    local result = math_max(math_floor(value + 0.00000000001), 0);
+    return result;
 end
 
 function GarrAutoBoard:GetBaseValue(effect, attack)
     if effect.UsePoints then
         return effect.Points;
     elseif effect.UseAttackForPoint then
-        return math.floor(effect.Points * attack);
+        local result = Round(effect.Points, attack);
+        return result;
     else
         return effect.Points;
+    end
+end
+
+function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, spell, effect, value)
+    local aura = GarrAutoAura:New(spell, effect, sourceUnit.BoardIndex, value);
+    table_insert(targetUnit.Auras, aura);
+    local result = 0
+    if effect.IsDotOrHot and effect.ExtraInitialPeriod then
+        local targetInfo = {
+            BoardIndex = targetUnit.BoardIndex,
+            MaxHP = targetUnit.MaxHP,
+            OldHP = targetUnit.CurHP,
+            NewHP = targetUnit.CurHP,
+            Points = 0
+        }
+        self:AddEvent(aura, effect, ET_ApplyAura, sourceUnit.BoardIndex, { targetInfo });
+        local info = self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
+        result = info.Points;
+    end
+
+    if effect.IsTaunt then
+        targetUnit.TauntedBy = sourceUnit.BoardIndex;
+    elseif effect.IsUntargetable then
+        targetUnit.Untargetable = true
+    elseif effect.IsReflect then
+        targetUnit.ReflectAura = aura;
+    elseif effect.IsMaxHPMultilier then
+        targetUnit.MaxHP = targetUnit.MaxHP + value;
+        targetUnit.CurHP = math_min(targetUnit.MaxHP, targetUnit.CurHP + value);
+    end
+    return result;
+end
+
+function GarrAutoBoard:ManageAuras(targetUnit, sourceUnit, spell, effect)
+    local i = 1;
+    local removed = { };
+    while i <= #targetUnit.Auras do
+        local aura = targetUnit.Auras[i];
+        if aura.SourceIndex == sourceUnit.BoardIndex and aura.ID == effect.ID then
+            if aura.IsDotOrHot and (aura.CurrentPeriod == 0) then
+                local targetInfo = self:CastSpellEffect(sourceUnit, targetUnit, {}, aura, true);
+                local logEventType = GetLogEventType(aura);
+                self:AddEvent(spell, aura, logEventType, sourceUnit.BoardIndex, {targetInfo});
+                if not targetUnit:IsAlive() then
+                    self:OnDie(sourceUnit, targetUnit, spell, targetInfo);
+                end
+            end
+
+            aura:DecRestTime();
+
+            -- Passive aura can be remove if source unit was died
+            if aura.Duration == 0 or (aura.IsPassive and not sourceUnit:IsAlive()) then
+                local targetInfo = {
+                    BoardIndex = targetUnit.BoardIndex,
+                    MaxHP = targetUnit.MaxHP,
+                    OldHP = targetUnit.CurHP,
+                    NewHP = targetUnit.CurHP,
+                    Points = 0
+                };
+                table_remove(targetUnit.Auras, i);
+                table_insert(removed, targetInfo);
+
+                i = i - 1;
+
+                if aura.IsTaunt then
+                    targetUnit.TauntedBy = nil;
+                elseif aura.IsUntargetable then
+                    targetUnit.Untargetable = false;
+                elseif aura.IsReflect then
+                    targetUnit.ReflectAura = nil;
+                elseif aura.IsMaxHPMultilier then
+                    local value = aura.BaseValue; -- todo: fix it
+                    targetUnit.CurHP = math_min(targetUnit.CurHP, targetUnit.MaxHP); -- if CurHP = 0 then die??
+                    targetUnit.MaxHP = targetUnit.MaxHP - value;
+                end
+            end
+        end
+        i = i + 1;
+    end
+    return removed;
+end
+
+function GarrAutoBoard:ManageAurasForUnit(sourceUnit)
+    for _, spell in ipairs(sourceUnit.Spells) do
+        if not spell.IsAutoAttack then
+            for _, effect in ipairs(spell.Effects) do
+                local removed = { };
+                for u = 0, 12 do
+                    local targetUnit = self.Board[u];
+                    if targetUnit then
+                        local removedTargetInfo = self:ManageAuras(targetUnit, sourceUnit, spell, effect);
+                        for _, ti in ipairs(removedTargetInfo) do
+                            table_insert(removed, ti);
+                        end
+                    end
+                end
+                if #removed > 0 then
+                    self:AddEvent(spell, effect, ET_RemoveAura, sourceUnit.BoardIndex, removed);
+                end
+            end
+        end
     end
 end
 
@@ -343,22 +405,18 @@ function GarrAutoBoard:CastSpellEffect(sourceUnit, targetUnit, spell, effect, is
     local oldTargetHP = targetUnit.CurHP;
     local value = 0;
 
-    if effect.IsDamage or (isAura and effect.IsDot or effect.IsReflect) then
+    if effect.IsDamage or (isAura and (effect.IsDot or effect.IsReflect)) then
         value = self:CalculateEffectValue(sourceUnit, targetUnit, effect);
-        targetUnit.CurHP = math.max(0, targetUnit.CurHP - value);
+        targetUnit.CurHP = math_max(0, targetUnit.CurHP - value);
 
     elseif effect.IsHeal or (isAura and effect.IsHot) then
         value = self:CalculateEffectValue(sourceUnit, targetUnit, effect);
-        targetUnit.CurHP = math.min(targetUnit.MaxHP, targetUnit.CurHP + value);
-
-    elseif effect.Effect == 18 then -- Maximum health multiplier
-        value = self:CalculateEffectValue(sourceUnit, targetUnit, effect);
-        targetUnit.MaxHP = targetUnit.MaxHP + value;
-        targetUnit.CurHP = math.min(targetUnit.MaxHP, targetUnit.CurHP + value);
+        targetUnit.CurHP = math_min(targetUnit.MaxHP, targetUnit.CurHP + value);
 
     else
+        -- TODO: this we need calculate value more correctly
         value = self:GetBaseValue(effect, sourceUnit.Attack);
-        self:ApplyAura(sourceUnit, targetUnit, spell, effect, value);
+        value = self:ApplyAura(sourceUnit, targetUnit, spell, effect, value);
     end
 
     spell.WasCasted = true;
@@ -391,12 +449,13 @@ end
 
 function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
     local targetUnit = self.Board[eventTargetInfo.BoardIndex];
-    if effect.IsDamage and targetUnit and targetUnit.Reflect > 0 then
-        local reflEffect = { EffectIndex = 0, Effect = 15, IsReflect = true };
-        local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, { }, reflEffect, true);
+    local reflAura = targetUnit.ReflectAura;
+    if effect.IsDamage and targetUnit and reflAura then
+        local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, spell, reflAura, true);
         -- can be mele or range
-        self:AddEvent(spell, effect, ET_MeleeDamage, targetUnit.BoardIndex, { reflTargetInfo });
-        self:OnTakeDamage(sourceUnit, spell, reflEffect, reflTargetInfo);
+        local logEventType = GetLogEventType(effect);
+        self:AddEvent(reflAura, effect, logEventType, targetUnit.BoardIndex, { reflTargetInfo });
+        self:OnTakeDamage(sourceUnit, spell, reflAura, reflTargetInfo);
     end
 
     -- unit died
@@ -428,10 +487,28 @@ function GarrAutoBoard:OnDie(sourceUnit, targetUnit, spell, effect, eventTargetI
 end
 
 function GarrAutoBoard:GetTargets(unit, targetType, lastTargetType, lastTargetIndexes)
+    local mainTarget = unit.TauntedBy;
+
+    -- for check and debugging random spell effects
+    if self.BlizzardLog and (targetType == 19 or targetType == 20 or targetType == 21) then
+        local roundInfo = self.BlizzardLog[self.Round];
+        if roundInfo and roundInfo.events and #roundInfo.events > 0 then
+            local eventInfo = roundInfo.events[self.Event];
+            if eventInfo and eventInfo.targetInfo and #eventInfo.targetInfo == 1 then
+                mainTarget = eventInfo.targetInfo[1].boardIndex;
+                if not self.Board[mainTarget] then
+                    assert(nil, "Not exists on board");
+                    --mainTarget = unit.TauntedBy;
+                end
+            end
+        end
+    end
+
     -- update targets if skill has different effects target type
     if lastTargetType ~= targetType and targetType ~= 0 then
         local aliveUnits = unit:GetTargetableUnits(self.Board);
-        return T.TargetManager:GetTargetIndexes(unit.BoardIndex, targetType, aliveUnits, unit.TauntedBy);
+        local targets, isRandomFork = TargetManager:GetTargetIndexes(unit.BoardIndex, targetType, aliveUnits, mainTarget);
+        return targets, isRandomFork;
     else
         return lastTargetIndexes;
     end
@@ -449,7 +526,7 @@ function GarrAutoBoard:ApplyPassiveAura(turnOrder)
                         for _, targetIndex in ipairs(targetIndexes) do
                             local targetUnit = self.Board[targetIndex];
                             local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
-                            table.insert(targetInfo, eventTargetInfo);
+                            table_insert(targetInfo, eventTargetInfo);
                         end
                         self:AddEvent(spell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
                     end
@@ -464,19 +541,15 @@ function GarrAutoBoard:MakeAction(sourceUnit)
         return;
     end
 
-    self:ManageAppliedAura(sourceUnit);
+    self:ManageAurasForUnit(sourceUnit);
 
     if not sourceUnit:IsAlive() then
         return;
     end
 
-    -- Decrease spell cooldown
-    for _, spell in ipairs(sourceUnit.Spells) do
-        spell:DecCD();
-    end
+    local targetIndexes, isRandomFork, lastTargetType = nil, nil, nil;
 
-    local targetIndexes, lastTargetType = nil, nil;
-
+    sourceUnit:DecSpellCD();
     local spells = sourceUnit:GetAvailableSpells();
     for _, spell in ipairs(spells) do
         if self.IsOver then
@@ -485,18 +558,23 @@ function GarrAutoBoard:MakeAction(sourceUnit)
 
         lastTargetType = -1
         for _, effect in ipairs(spell.Effects) do
-            targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, lastTargetType, targetIndexes);
-
+            targetIndexes, isRandomFork = self:GetTargets(sourceUnit, effect.TargetType, lastTargetType, targetIndexes);
+            -- todo:
             local needCast = self:PrepareCast(targetIndexes, spell, effect);
             if needCast then
                 local targetInfo = { };
-                for _, targetIndex in ipairs(targetIndexes) do
-                    local targetUnit = self.Board[targetIndex];
-                    local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
-                    table.insert(targetInfo, eventTargetInfo);
+                -- hack: if spell does'nt work
+                if effect.TargetType == 0 then
+                    spell.WasCasted = true;
+                else
+                    for _, targetIndex in ipairs(targetIndexes) do
+                        local targetUnit = self.Board[targetIndex];
+                        local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
+                        table_insert(targetInfo, eventTargetInfo);
+                    end
                 end
 
-                local logEventType = T.GetLogEventType(effect);
+                local logEventType = GetLogEventType(effect);
                 self:AddEvent(spell, effect, logEventType, sourceUnit.BoardIndex, targetInfo);
 
                 for _, unitInfo in pairs(targetInfo) do
@@ -505,7 +583,7 @@ function GarrAutoBoard:MakeAction(sourceUnit)
 
                 -- set last target
                 if effect.TargetType ~= 0 then
-                    lastTargetType = effect.TargetType
+                    lastTargetType = effect.TargetType;
                 end
             end
         end
@@ -537,15 +615,15 @@ function GarrAutoBoard:AddCheckpoint(index)
     for i = 0, 12 do
         local unit = self.Board[i];
         if unit and unit:IsAlive() then
-            table.insert(unitsInfo, string.format("%x:%d", i, unit.CurHP));
+            table_insert(unitsInfo, ("%x:%d"):format(i, unit.CurHP));
         end
     end
 
-    local checkpoint = table.concat(unitsInfo, "_");
+    local checkpoint = table_concat(unitsInfo, "_");
     if index then
         self.CheckPoints[index] = checkpoint;
     else
-        table.insert(self.CheckPoints, checkpoint);
+        table_insert(self.CheckPoints, checkpoint);
     end
 
     local idx = #self.CheckPoints;

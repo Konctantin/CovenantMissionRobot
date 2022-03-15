@@ -1,5 +1,8 @@
 local _, T = ...;
 
+local table_insert = table.insert;
+local math_random = math.random;
+
 -- !BoardIndexes!
 --
 -- Environment: -1
@@ -115,13 +118,13 @@ local AdjacentEnemies = {
     [6] = {
         Alone   = { },
         Blocker = { 2, 3 },
-        Alive   = { { 2, 3 } }, -- proved
+        Alive   = { { 2, 3 } },
         Dead    = { { 0, 1, 2 } },
     },
     [7] = {
         Alone   = { },
         Blocker = { 3, 4 },
-        Alive   = { { 3, 4 } }, -- proved
+        Alive   = { { 3, 4 } },
         Dead    = { { 0, 1, 2 } },
     },
     [8] = {
@@ -230,7 +233,7 @@ local LineEnemies = {
 local function GetTargetPriority(sourceIndex, targetType, mainTarget)
     local targets = PriorityTable[targetType][sourceIndex];
     if mainTarget then
-        table.insert(targets, 1, mainTarget);
+        table_insert(targets, 1, mainTarget);
     end
 
     return targets;
@@ -266,13 +269,13 @@ local function GetAllAllies(sourceIndex, targetType, boardUnits)
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 0, 4 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     else
         for i = 5, 12 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     end
@@ -286,13 +289,13 @@ local function GetAllEnemies(sourceIndex, targetType, boardUnits)
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 5, 12 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     else
         for i = 0, 4 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     end
@@ -306,7 +309,7 @@ local function GetAllAdjacentAllies(sourceIndex, targetType, boardUnits)
     local adjacentTargets = AdjacentAllies[sourceIndex];
     for _, target in ipairs(adjacentTargets) do
         if boardUnits[target] then
-            table.insert(targets, target);
+            table_insert(targets, target);
         end
     end
 
@@ -323,7 +326,7 @@ local function GetAllAdjacentEnemies(sourceIndex, targetType, boardUnits, mainTa
     for _, group in ipairs(variants) do
         for _, boardIndex in ipairs(group) do
             if boardUnits[boardIndex] then
-                table.insert(targets, boardIndex);
+                table_insert(targets, boardIndex);
             end
         end
     end
@@ -331,7 +334,7 @@ local function GetAllAdjacentEnemies(sourceIndex, targetType, boardUnits, mainTa
     if #targets == 0 then
         local singleTarget = GetMainTarget(targetInfo.Alone, boardUnits);
         if singleTarget then
-            table.insert(targets, singleTarget);
+            table_insert(targets, singleTarget);
         end
     end
 
@@ -350,7 +353,7 @@ local function GetClosestAllyCone(sourceIndex, targetType, boardUnits, mainTarge
     local coneTargets = ConeAllies[mainTarget];
     for _, target in ipairs(coneTargets) do
         if boardUnits[target] then
-            table.insert(targets, target);
+            table_insert(targets, target);
         end
     end
 
@@ -369,7 +372,7 @@ local function GetClosestEnemyCone(sourceIndex, targetType, boardUnits, mainTarg
     local coneTargets = ConeEnemies[mainTarget];
     for _, target in ipairs(coneTargets) do
         if boardUnits[target] then
-            table.insert(targets, target);
+            table_insert(targets, target);
         end
     end
 
@@ -388,7 +391,7 @@ local function GetClosestEnemyLine(sourceIndex, targetType, boardUnits, mainTarg
     local lineTargets = LineEnemies[mainTarget];
     for _, target in ipairs(lineTargets) do
         if boardUnits[target] then
-            table.insert(targets, target);
+            table_insert(targets, target);
         end
     end
 
@@ -401,26 +404,26 @@ local function GetAllMeleeAllies(sourceIndex, targetType, boardUnits)
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 2, 4 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 0, 1 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     else
         for i = 5, 8 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 9, 12 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
@@ -435,33 +438,33 @@ local function GetAllMeleeEnemies(sourceIndex, targetType, boardUnits, mainTarge
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 5, 8 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 9, 12 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     else
         for i = 2, 4 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 0, 1 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     end
 
     if mainTarget then
-        table.insert(targets, 1, mainTarget);
+        table_insert(targets, 1, mainTarget);
     end
 
     return targets;
@@ -473,26 +476,26 @@ local function GetAllRangedAllies(sourceIndex, targetType, boardUnits, mainTarge
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 0, 1 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 2, 4 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     else
         for i = 9, 12 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 5, 8 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
@@ -507,40 +510,60 @@ local function GetAllRangedEnemies(sourceIndex, targetType, boardUnits, mainTarg
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 9, 12 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 5, 8 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     else
         for i = 0, 1 do
             if boardUnits[i] then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
         if #targets == 0 then
             for i = 2, 4 do
                 if boardUnits[i] then
-                    table.insert(targets, i);
+                    table_insert(targets, i);
                 end
             end
         end
     end
 
     if mainTarget then
-        table.insert(targets, 1, mainTarget);
+        table_insert(targets, 1, mainTarget);
     end
 
     return targets;
 end
 
 local function NotImplemented(sourceIndex, targetType, boardUnits, mainTarget)
-    return { sourceIndex };
+    return {  };
+end
+
+local function GetRandomAll(sourceIndex, targetType, boardUnits, mainTarget)
+    if mainTarget then
+        return { mainTarget };
+    end
+
+    local targets = {};
+    for i = 0, 12 do
+        if boardUnits[i] then
+            table_insert(targets, i);
+        end
+    end
+
+    if #targets > 0 then
+        local target = math_random(#targets);
+        return { target };
+    end
+
+    return targets, true;
 end
 
 local function GetRandomEnemy(sourceIndex, targetType, boardUnits, mainTarget)
@@ -548,52 +571,81 @@ local function GetRandomEnemy(sourceIndex, targetType, boardUnits, mainTarget)
         return { mainTarget };
     end
 
-    local targets = { };
-    for i, v in pairs(boardUnits) do
-        if (sourceIndex == -1 and i <= 4 and v)
-        or (sourceIndex  > 4  and i <= 4 and v)
-        or (sourceIndex <= 4  and sourceIndex >= 0 and i  > 4 and v)
-        then
-            table.insert(targets, i);
+    local targets = {};
+
+    if sourceIndex >= 0 and sourceIndex <= 4 then
+        for i = 5, 12 do
+            if boardUnits[i] then
+                table_insert(targets, i);
+            end
+        end
+    else
+        for i = 0, 4 do
+            if boardUnits[i] then
+                table_insert(targets, i);
+            end
         end
     end
 
-    if #targets == 0 then
-        return { };
+    if #targets > 0 then
+        local target = math_random(#targets);
+        return { target };
     end
 
-    local index = math.random(#targets);
-    local target = targets[index];
-    return { target };
+    return targets, true;
 end
 
 local function GetRandomAlly(sourceIndex, targetType, boardUnits, mainTarget)
+    if mainTarget then
+        return { mainTarget };
+    end
+
     local targets = { };
 
-    for i, v in pairs(boardUnits) do
-        if (sourceIndex == -1 and i  > 4 and v)
-        or (sourceIndex > 4   and i  > 4 and v)
-        or (sourceIndex <= 4  and sourceIndex >= 0 and i <= 4 and v)
-        then
-            table.insert(targets, i);
+    if sourceIndex >= 0 and sourceIndex <= 4 then
+        for i = 0, 4 do
+            if boardUnits[i] then
+                table_insert(targets, i);
+            end
+        end
+    else
+        for i = 5, 12 do
+            if boardUnits[i] then
+                table_insert(targets, i);
+            end
         end
     end
 
-    if #targets == 0 then
-        return { };
+    if #targets > 0 then
+        local target = math_random(#targets);
+        return { target };
     end
 
-    local index = math.random(#targets);
-    local target = targets[index];
-    return { target };
-end
-
-local function GetEnvAllAllies(sourceIndex, targetType, boardUnits, mainTarget)
-    return { 0, 1, 2, 3, 4 };
+    return targets, true;
 end
 
 local function GetEnvAllEnemies(sourceIndex, targetType, boardUnits, mainTarget)
-    return { 5, 6, 7, 8, 9, 10, 11, 12 };
+    local targets = { };
+
+    for i = 0, 4 do
+        if boardUnits[i] then
+            table_insert(targets, i);
+        end
+    end
+
+    return targets;
+end
+
+local function GetEnvAllAllies(sourceIndex, targetType, boardUnits, mainTarget)
+    local targets = { };
+
+    for i = 5, 11 do
+        if boardUnits[i] then
+            table_insert(targets, i);
+        end
+    end
+
+    return targets;
 end
 
 local function GetAlliesExpectSelf(sourceIndex, targetType, boardUnits, mainTarget)
@@ -602,13 +654,13 @@ local function GetAlliesExpectSelf(sourceIndex, targetType, boardUnits, mainTarg
     if sourceIndex >= 0 and sourceIndex <= 4 then
         for i = 0, 4 do
             if boardUnits[i] and i ~= sourceIndex then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     else
         for i = 5, 12 do
             if boardUnits[i] and i ~= sourceIndex then
-                table.insert(targets, i);
+                table_insert(targets, i);
             end
         end
     end
@@ -633,20 +685,20 @@ local FunctionTable = {
     [15] = GetAllMeleeEnemies,
     [16] = GetAllRangedAllies,
     [17] = GetAllRangedEnemies,
-    [19] = GetRandomEnemy,
+    [19] = GetRandomAll,
     [20] = GetRandomEnemy,
     [21] = GetRandomAlly,
     [22] = GetAlliesExpectSelf,
-    [23] = GetEnvAllAllies,
-    [24] = GetEnvAllEnemies
+    [23] = GetEnvAllEnemies,
+    [24] = GetEnvAllAllies,
 }
 
 TargetManager = { };
 
 function TargetManager:GetTargetIndexes(sourceIndex, targetType, boardUnits, mainTarget)
     local func = FunctionTable[targetType];
-    local indexes = func(sourceIndex, targetType, boardUnits, mainTarget);
-    return indexes;
+    local indexes, isRandomFork = func(sourceIndex, targetType, boardUnits, mainTarget);
+    return indexes, isRandomFork or false;
 end
 
 T.TargetManager = TargetManager;

@@ -1,5 +1,9 @@
 local _, T = ...;
 
+local IsDebug = T.IsDebug;
+
+local math_max = math.max;
+
 -- GarrAutoSpell --
 
 local GarrAutoSpell = {
@@ -28,10 +32,13 @@ function GarrAutoSpell:New(spellInfo)
         Name         = spellInfo.Name,
         Effects      = spellInfo.Effects,
         HasRandom    = spellInfo.HasRandomEffect or false,
-        -- this is for a nice debugging
-        NameDef      = spellInfo.NameDef,
-        Description  = spellInfo.Description
     };
+
+    -- this is for a nice debugging
+    if IsDebug then
+        obj.NameDef     = spellInfo.NameDef;
+        obj.Description = spellInfo.Description;
+    end
 
     self.__index = self;
     setmetatable(obj, self);
@@ -91,16 +98,16 @@ function GarrAutoAura:New(spell, effect, sourceIndex, value)
         obj[k] = v;
     end
 
-    obj.Period        = math.max(obj.Period - 1, 0);
-    obj.CurrentPeriod = math.max(obj.Period, 0);
+    obj.Period        = math_max(obj.Period - 1, 0);
+    obj.CurrentPeriod = math_max(obj.Period, 0);
 
     self.__index = self;
     return setmetatable(obj, self);
 end
 
 function GarrAutoAura:DecRestTime()
-    self.Duration = math.max(self.Duration - 1, 0);
-    self.CurrentPeriod = self.CurrentPeriod == 0 and self.Period or math.max(self.CurrentPeriod - 1, 0);
+    self.Duration = math_max(self.Duration - 1, 0);
+    self.CurrentPeriod = self.CurrentPeriod == 0 and self.Period or math_max(self.CurrentPeriod - 1, 0);
     return self.Duration;
 end
 

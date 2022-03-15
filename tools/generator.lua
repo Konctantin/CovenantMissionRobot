@@ -6,7 +6,7 @@ local HEADER = [[-- This file was created by ./tools/generator.lua
 local _, T = ...;
 
 -- SpellInfo:
---  Cooldown - Cooldovn in seconds
+--  Cooldown - Cooldovn in rounds
 --  Duration - Duration in rounds
 --  Flags - 1-Has start CD
 --  SchoolMask = 1-Physical, 2-Holly, 4-Fire, 8-Nature, 16-Frost, 32-Shadow, 64-Arcane
@@ -55,12 +55,12 @@ local _, T = ...;
 --  15 - Front line enemies
 --  16 - Back line allies
 --  17 - Back line enemies
---  19 - Random enemy
+--  19 - Random all
 --  20 - Random enemy
 --  21 - Random ally
 --  22 - All allies without self
---  23 - All allies
---  24 - Unknown
+--  23 - Env all enemies
+--  24 - Env all allies
 
 T.AUTO_ATTACK_SPELLS = { [11]=1, [15]=1 };
 
@@ -218,11 +218,43 @@ local function WriteAutoTroopSpells(file)
     file:write(" };")
 end
 
+local function Extend(value)
+    local neg = value < 0;
+    local mantis, exp = math.frexp(value);
+    mantis = neg and -mantis or mantis;
+
+    local lo = mantis % 2^-24;
+    local a = lo >= 2^-25 and (lo > 2^-25 or mantis % 2^-23 >= 2^-24) and 2^-24 or 0;
+    local rv = (mantis - lo + a) * 2^exp;
+
+    local result = neg and -rv or rv;
+    return result;
+end
+
+local function WritePoints(file)
+    local points = { };
+    for _, v in pairs(garrautospelleffect) do
+        local p = tonumber(v.Points);
+        if (p % 1) ~= 0 then
+            points[p] = Extend(p);
+        end
+    end
+
+    file:write("T.PREDEFINED_POINTS = {\n");
+    for k, v in sortedPairs(points) do
+        if k ~= v then
+            file:write(string.format("    [%.02f] = %s,\n", k, tonumber(v)));
+        end
+    end
+    file:write("};")
+end
+
 local function WriteSpells(file)
     file:write("T.GARR_AUTO_SPELL = {\n")
     for sid, spell in sortedPairs(garrautospell) do
         --file:write("    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
-        file:write(string.format("    [%03d] = { SpellID = %03d", sid, sid));
+        file:write(string.format('    [%03d] = { NameDef = "%s", Description = "%s",\n', sid, trim(spell.Name_lang), trim(spell.Description_lang)));
+        file:write(string.format("        SpellID = %03d", sid));
         file:write(string.format(", Cooldown = %s", spell.Cooldown));
         file:write(string.format(", Duration = %s", spell.Duration));
         file:write(string.format(", Flags = %s", spell.Flags));
@@ -243,9 +275,7 @@ local function WriteSpells(file)
                 file:write(" },\n");
             end
         end
-        file:write("        },\n");
-        file:write(string.format('        NameDef = "%s", Description = "%s"\n', trim(spell.Name_lang), trim(spell.Description_lang)));
-        file:write("    },\n")
+        file:write("    } },\n");
     end
     file:write("};")
 end
@@ -328,11 +358,12 @@ CREATE TABLE [wow].[dbo].[GarrAutoSpellEffect] (
             when 15 then 'Front line enemies'
             when 16 then 'Back line allies'
             when 17 then 'Back line enemies'
-            when 19 then 'Random enemy'
+            when 19 then 'Random all'
             when 20 then 'Random enemy'
             when 21 then 'Random ally'
-            when 22 then 'All allies'
-            when 23 then 'All allies'
+            when 22 then 'All allies without self'
+            when 23 then 'Env all enemies'
+            when 24 then 'Env all allies'
         else cast([TargetType] as varchar) end)
 );
 GO
@@ -369,6 +400,9 @@ WriteEnemiesAA(file);
 file:write("\n\n");
 
 WriteAutoTroopSpells(file);
+file:write("\n\n");
+
+WritePoints(file);
 file:write("\n\n");
 
 WriteSpells(file);

@@ -1,5 +1,10 @@
 local _, T = ...;
 
+local GetAutoAttackSpellId = T.GetAutoAttackSpellId;
+local GARR_AUTO_SPELL = T.GARR_AUTO_SPELL;
+local GarrAutoSpell = T.GarrAutoSpell;
+
+
 local GarrAutoCobatant = {
     Auras         = { },
     Spells        = { },
@@ -14,7 +19,7 @@ local GarrAutoCobatant = {
     DeathSeq      = 0,
     TauntedBy     = nil,
     Untargetable  = false,
-    Reflect       = 0,
+    ReflectAura   = nil,
     IsAutoTroop   = false,
     Name          = ""
 };
@@ -32,7 +37,7 @@ function GarrAutoCobatant:New(unitInfo, missionId)
         MissionID    = missionId,
         TauntedBy    = nil,
         Untargetable = false,
-        Reflect      = 0,
+        RReflectAura = nil,
         IsAutoTroop  = unitInfo.IsAutoTroop, -- we need define this field manually from T.GARR_AUTO_TROOP_SPELLS
         DeathSeq     = 0,
         Spells       = { },
@@ -61,7 +66,7 @@ function GarrAutoCobatant:NewEnv(environment, missionId)
         TauntedBy    = nil,
         Untargetable = true,
         IsAutoTroop  = false,
-        Reflect      = 0,
+        ReflectAura  = nil,
         DeathSeq     = 0,
         Spells       = { },
         Auras        = { }
@@ -86,7 +91,7 @@ function GarrAutoCobatant:Reset()
     self.CurHP = self.StartHP;
     self.TauntedBy = nil;
     self.Untargetable = false;
-    self.Reflect = 0;
+    self.ReflectAura = nil;
     self.DeathSeq = 0;
     self.Auras = {};
     for _, spell in ipairs(self.Spells) do
@@ -98,19 +103,19 @@ function GarrAutoCobatant:SetupSpells(autoCombatSpells)
     -- Auto attack can be 11 (meele) or 15 (range)
     if self.BoardIndex > -1 then
         local firstSpellId = #autoCombatSpells > 0 and autoCombatSpells[1].autoCombatSpellID;
-        local autoAttackSpellId = T.GetAutoAttackSpellId(self.Role, self.MissionID, self.BoardIndex, firstSpellId);
-        local autoAttackSpellInfo = T.GARR_AUTO_SPELL[autoAttackSpellId];
-        autoAttackSpellInfo.Name = 'Auto Attack';
-        local autoAttackSpell = T.GarrAutoSpell:New(autoAttackSpellInfo);
+        local autoAttackSpellId = GetAutoAttackSpellId(self.Role, self.MissionID, self.BoardIndex, firstSpellId);
+        local autoAttackSpellInfo = GARR_AUTO_SPELL[autoAttackSpellId];
+        autoAttackSpellInfo.Name = autoAttackSpellInfo.NameDef;
+        local autoAttackSpell = GarrAutoSpell:New(autoAttackSpellInfo);
         table.insert(self.Spells, autoAttackSpell);
     end
 
     -- Regular spells
     for _, spell in ipairs(autoCombatSpells) do
-        local spellInfo = T.GARR_AUTO_SPELL[spell.autoCombatSpellID];
+        local spellInfo = GARR_AUTO_SPELL[spell.autoCombatSpellID];
         if spellInfo then
             spellInfo.Name = spell.name;
-            local spellObj = T.GarrAutoSpell:New(spellInfo);
+            local spellObj = GarrAutoSpell:New(spellInfo);
             table.insert(self.Spells, spellObj);
         else
             -- todo: assert?
@@ -120,6 +125,12 @@ end
 
 function GarrAutoCobatant:IsAlive()
     return self.CurHP > 0;
+end
+
+function GarrAutoCobatant:DecSpellCD()
+    for _, spell in ipairs(self.Spells) do
+        spell:DecCD();
+    end
 end
 
 function GarrAutoCobatant:GetAvailableSpells()
