@@ -220,51 +220,28 @@ function GarrAutoBoard:GetTurnOrder()
 end;
 
 function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
-    local auras = { };
-    local dealt, taken = 1, 1;
+    local dealt, taken, damage = 1, 1, 0;
 
-    -- delat damage multiplier
     for _, aura in ipairs(sourceUnit.Auras) do
         if aura.Effect == 11 or aura.Effect == 12 then
             dealt = dealt + aura.BaseValue;
-            auras[aura.SpellID] = aura.BaseValue + (auras[aura.SpellID] or 0);
+        elseif aura.Effect == 19 then
+            damage = damage + aura.BaseValue;
         end
     end
 
-    -- taken damage multiplier
     for _, aura in ipairs(targetUnit.Auras) do
         if aura.Effect == 13 or aura.Effect == 14 then
             taken = taken + aura.BaseValue;
-            auras[aura.SpellID] = aura.BaseValue + (auras[aura.SpellID] or 0);
+        elseif aura.Effect == 20 then
+            damage = damage + aura.BaseValue;
         end
-    end
-
-    local addDamage = 0;
-    for _, aura in ipairs(sourceUnit.Auras) do
-        -- AdditionalDamageDealt
-        if aura.Effect == 19 then
-            addDamage = addDamage + aura.BaseValue;
-        end
-    end
-
-    for _, aura in ipairs(targetUnit.Auras) do
-        -- AdditionalTakenDamage
-        if (aura.Effect == 20) then
-            addDamage = addDamage + aura.BaseValue;
-        end
-    end
-
-    -- todo: test it
-    local multiplier2 = 1;
-    for _, v in pairs(auras) do
-        multiplier2 = multiplier2 * (1 + v);
     end
 
     local multiplier = math_max(dealt * taken, 0);
-    local result = multiplier * (value + addDamage);
-    local result2 = multiplier2 * (value + addDamage);
+    local result = multiplier * (value + damage);
 
-    return result, result2; -- test it!
+    return result;
 end
 
 function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
@@ -279,9 +256,6 @@ function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
     end
 
     if effect.IsDamage or effect.IsDot or effect.IsReflect then
-        if effect.IsDot and not sourceUnit:IsAlive() then
-            return value;
-        end
         value = self:GetAdditionalDamage(sourceUnit, targetUnit, value);
     end
 
