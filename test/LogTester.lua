@@ -10,6 +10,7 @@ _G.bit = loadfile('libs/bit.lua')();
 --print('Start loading simulator...');
 
 loadfile('CovenantMissionRobot/VM/Settings.lua')(T.Name, T);
+loadfile('CovenantMissionRobot/VM/Utils.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/Tables.g.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/TargetManager.lua')(T.Name, T);
 loadfile('CovenantMissionRobot/VM/GarrAutoSpell.fix.lua')(T.Name, T);
@@ -22,7 +23,7 @@ loadfile('VenturePlan/vs.lua')(T.Name, T);
 
 loadfile('test/utils.lua')(T.Name, T);
 
-loadfile("Logs/VenturePlan_001.lua")(T.Name, T);
+loadfile("Logs/CovenantMissionRobot.lua")(T.Name, T);
 
 --print('Simulator has bin loaded!');
 
@@ -30,7 +31,7 @@ T.ApplySpellFixes();
 
 --[[ Problems::
 LogID: 16423565370004 Mission: 2233 Aura 91 Dazzledust
-round 1, event 4: 205 * -0.6 = -123 -> add aura
+round 1, event 4: 205 * -0.6 = -123 (need -124) -> add aura
 round 1, event 5: (1 * 146) - 123 = 23 but log has 22 wtf ???
 
 LogID: 16423566070003 Mission: 2233
@@ -38,12 +39,18 @@ round 1, event 8:
 
 LogID: 16423607340002 Mission: 2223
 round 5 - aura bug, simulation: true
-
+№ 18 LogID: 16424081760002 Mission: 2300 HasRandom: NO Log: OK
 № 19 LogID: 16424081770003 Mission: 2305
+№ 28 LogID: 16424193640003 Mission: 2188 HasRandom: YES Log: OK
+№ 42 LogID: 16424214040004 Mission: 2284 HasRandom: NO Log: OK
+№ 54 LogID: 16424218890001 Mission: 2277 HasRandom: NO Log: OK
+№ 64 LogID: 16424224420006 Mission: 2241 HasRandom: NO Log: OK
+№ 69 LogID: 16424234510005 Mission: 2202 HasRandom: NO Log: OK
+№ 92 LogID: 16424242540004 Mission: 2277 HasRandom: NO Log: OK
 ]]
 local function padl(str, cnt)
     local r = string.len(str);
-    for i = r, cnt do
+    for _ = r, cnt do
         str=str..' ';
     end
     return str;
@@ -58,22 +65,20 @@ local function CheckSim(cp1, cp2)
     end
     return true;
 end
-local start = 40
-for i, report in ipairs(VP_MissionReports) do
-    --if 1 == 1 then
-    if i >= start and i < start+10 then
-    --if report.id == '16423565380005' then
-    --if report.id=='16423566060002' then
-
+local start = 1
+for i, report in ipairs(CMR_LOGS) do
+    if 1 == 1 then
+    --if CMR_MISSIONS and CMR_MISSIONS.ERROR and CMR_MISSIONS.ERROR[report.missionID] then
+    --if i >= start and i < start+10 then
+    --if report.id == '16424218120003' then
         local isOK, baseCheckpoints = T.GenerateCheckpoints(report);
 
-        local cmr = T.PrepareCMR(report);
-        cmr:SetupBlizzardLog(report.log);
-        local vp = T.PrepareVP(report);
+        local board = T.GarrAutoBoard:New(report);
+        board.LogEnabled = true;
 
         print("");
         print(string.format("№ %i LogID: %s Mission: %d HasRandom: %s Log: %s",
-            i, report.id, report.missionID, (cmr.HasRandomSpells and "YES" or "NO"),
+            i, report.id, report.missionID, (board.HasRandomSpells and "YES" or "NO"),
             (isOK and "OK" or "Broken!")));
 
         --for i=0,12 do
@@ -86,19 +91,19 @@ for i, report in ipairs(VP_MissionReports) do
         --    end
         --end
 
-        cmr:Run();
+        board:Run();
 
-        local isOKSim = CheckSim(cmr.CheckPoints, baseCheckpoints);
+        local isOKSim = CheckSim(board.CheckPoints, baseCheckpoints);
 
         if isOKSim then
             print("Simulation: OK!")
         else
-            T.PrintComparedLogs(cmr.Log, report.log, false);
+            T.PrintComparedLogs(board.Log, report.log, false);
             print("");
-            for r = 0, math.max(math.max(#cmr.CheckPoints, #vp.checkpoints), #baseCheckpoints) do
-                local l1 = cmr.CheckPoints[r];
+            for r = 0, math.max(#board.CheckPoints, #baseCheckpoints) do
+                local l1 = board.CheckPoints[r];
                 local l3 = baseCheckpoints[r];
-                print(r, padl(l1,70), l3);
+                print(r, padl(l1,70), l3, (l1==l3 and "ok" or ""));
             end
         end
     end

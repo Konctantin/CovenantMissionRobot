@@ -104,8 +104,8 @@ end
 local function quoteStr(str) return string.gsub(str, "\'", "''") end
 
 local function parseLog(file, fileName)
-    assert(type(VP_MissionReports)=="table", "Could not retrieve table 'VP_MissionReports'!");
-    for i, missionLog in ipairs(VP_MissionReports) do
+    assert(type(CMR_LOGS)=="table", "Could not retrieve table 'CMR_LOGS'!");
+    for i, missionLog in ipairs(CMR_LOGS) do
         local id = tostring(missionLog.id);
         local mid = missionLog.missionID;
 
@@ -187,13 +187,13 @@ end
 
 for i = 1, 20 do
     local v = string.format("%03i", i);
-    local fname = "Logs/VenturePlan_"..v..".lua";
+    local fname = "Logs/CovenantMissionRobot_"..v..".lua";
     if fileExists(fname) then
 
         -- load log
         loadfile(fname)();
 
-        local file = io.open("Logs/MissionLogs_"..v..".sql", "w");
+        local file = io.open("Logs/CovenantMissionRobot_"..v..".sql", "w");
         writeSchema(file);
         file:write("\n");
         parseLog(file, fname);

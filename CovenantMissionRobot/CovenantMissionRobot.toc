@@ -3,8 +3,10 @@
 ## Author: Konstatin
 ## Version: 1.0.1
 ## RequiredDep: Blizzard_GarrisonTemplates
-## SavedVariables: CMR_DB
+## SavedVariables: CMR_LOGS, CMR_CHECPOINTS, CMR_MISSIONS
 
+VM/Settings.lua
+VM/Utils.lua
 VM/Tables.g.lua
 VM/TargetManager.lua
 VM/GarrAutoSpell.fix.lua
@@ -12,8 +14,7 @@ VM/GarrAutoSpell.lua
 VM/GarrAutoCombatant.lua
 VM/GarrAutoBoard.lua
 
-UI/UI.xml
-UI/UI.lua
-UI/MissionHelperFrame.xml
+UI/LogsCollector.lua
+UI/InfoFrame.lua
 
 CovenantMissionRobot.lua

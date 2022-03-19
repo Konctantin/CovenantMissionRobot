@@ -47,14 +47,14 @@ function GarrAutoCobatant:New(unitInfo, missionId)
     self.__index = self;
     setmetatable(obj, self);
 
-    obj:SetupSpells(unitInfo.autoCombatSpells);
+    obj:SetupSpells(unitInfo.autoCombatSpells, unitInfo.autoCombatAutoAttack);
 
     return obj;
 end
 
-function GarrAutoCobatant:NewEnv(environment, missionId)
+function GarrAutoCobatant:NewEnv(missionInfo)
     local obj = {
-        Name         = environment.EnvironmentName,
+        Name         = missionInfo.environmentEffect.name,
         Level        = 0,
         MaxHP        = 1e5,
         CurHP        = 1e5,
@@ -62,7 +62,7 @@ function GarrAutoCobatant:NewEnv(environment, missionId)
         Attack       = 1,
         BoardIndex   = -1,
         Role         = 0,
-        MissionID    = missionId,
+        MissionID    = missionInfo.missionID,
         TauntedBy    = nil,
         Untargetable = true,
         IsAutoTroop  = false,
@@ -75,14 +75,7 @@ function GarrAutoCobatant:NewEnv(environment, missionId)
     self.__index = self;
     setmetatable(obj, self);
 
-    local autoCombatSpells = {
-        {
-            autoCombatSpellID = environment.SpellID,
-            name = environment.SpellName
-        }
-    };
-
-    obj:SetupSpells(autoCombatSpells);
+    obj:SetupSpells(missionInfo.environmentEffect.autoCombatSpellInfo);
 
     return obj;
 end
@@ -99,22 +92,20 @@ function GarrAutoCobatant:Reset()
     end
 end
 
-function GarrAutoCobatant:SetupSpells(autoCombatSpells)
-    -- Auto attack can be 11 (meele) or 15 (range)
-    if self.BoardIndex > -1 then
-        local firstSpellId = #autoCombatSpells > 0 and autoCombatSpells[1].autoCombatSpellID;
-        local autoAttackSpellId = GetAutoAttackSpellId(self.Role, self.MissionID, self.BoardIndex, firstSpellId);
-        local autoAttackSpellInfo = GARR_AUTO_SPELL[autoAttackSpellId];
-        autoAttackSpellInfo.Name = autoAttackSpellInfo.NameDef;
+function GarrAutoCobatant:SetupSpells(autoCombatSpells, autoCombatAutoAttack)
+    if self.BoardIndex > -1 and autoCombatAutoAttack then
+        local autoAttackSpellInfo = GARR_AUTO_SPELL[autoCombatAutoAttack.autoCombatSpellID];
+        autoAttackSpellInfo.Name = autoCombatAutoAttack.name;
+        autoAttackSpellInfo.Description = autoCombatAutoAttack.description;
         local autoAttackSpell = GarrAutoSpell:New(autoAttackSpellInfo);
         table.insert(self.Spells, autoAttackSpell);
     end
 
-    -- Regular spells
     for _, spell in ipairs(autoCombatSpells) do
         local spellInfo = GARR_AUTO_SPELL[spell.autoCombatSpellID];
         if spellInfo then
             spellInfo.Name = spell.name;
+            spellInfo.Description = spell.description;
             local spellObj = GarrAutoSpell:New(spellInfo);
             table.insert(self.Spells, spellObj);
         else

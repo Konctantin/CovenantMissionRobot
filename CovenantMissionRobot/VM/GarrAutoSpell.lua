@@ -1,7 +1,5 @@
 local _, T = ...;
 
-local IsDebug = T.IsDebug;
-
 local math_max = math.max;
 
 -- GarrAutoSpell --
@@ -32,13 +30,8 @@ function GarrAutoSpell:New(spellInfo)
         Name         = spellInfo.Name,
         Effects      = spellInfo.Effects,
         HasRandom    = spellInfo.HasRandomEffect or false,
+        Description  = spellInfo.Description;
     };
-
-    -- this is for a nice debugging
-    if IsDebug then
-        obj.NameDef     = spellInfo.NameDef;
-        obj.Description = spellInfo.Description;
-    end
 
     self.__index = self;
     setmetatable(obj, self);

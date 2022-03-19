@@ -10,7 +10,7 @@ loadfile("Logs/VenturePlan_001.lua")(T.Name, T);
 
 
 for _, report in ipairs(VP_MissionReports) do
-    if report.id == '16423566060002' then
+    if report.id == '16424218120003' then
         print("");
         print(string.format("LogID: %s Mission: %d", report.id, report.missionID));
 

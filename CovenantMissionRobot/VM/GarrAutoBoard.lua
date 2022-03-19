@@ -83,7 +83,6 @@ end
 
 local GarrAutoBoard = {
     MissionID       = 0,
-    MissionScalar   = 0,
     MissionName     = "",
     Board           = { },
     CheckPoints     = { },
@@ -99,15 +98,13 @@ local GarrAutoBoard = {
     MaxHP = { }, -- MaxHP[boardIndex] = CurHP
 };
 
-function GarrAutoBoard:New(mission, unitList, environment)
+function GarrAutoBoard:New(missionInfo)
     local obj = {
-        MissionID = mission.missionID,
-        MissionName = mission.missionName,
-        MissionScalar = mission.missionScalar,
+        MissionID = missionInfo.missionID,
+        MissionName = missionInfo.name,
         Board = { },
         CheckPoints = { },
         Log = { },
-        BlizzardLog = nil,
         LogEnabled = false,
         IsOver = false,
         IsWin = false,
@@ -115,15 +112,21 @@ function GarrAutoBoard:New(mission, unitList, environment)
         Event = 1,
         MinHP = { }, -- MinHP[boardIndex] = CurHP
         MaxHP = { }, -- MaxHP[boardIndex] = CurHP
+        BlizzardLog = missionInfo.log -- only for testing
     };
 
-    if environment then
-        local envUnit = GarrAutoCobatant:NewEnv(environment, mission);
+    if missionInfo.environmentEffect then
+        local envUnit = GarrAutoCobatant:NewEnv(missionInfo);
         self.Board[-1] = envUnit;
     end
 
-    for _, unit in ipairs(unitList) do
-        local unitObj = GarrAutoCobatant:New(unit, mission.missionID);
+    for _, unit in ipairs(missionInfo.enemies) do
+        local unitObj = GarrAutoCobatant:New(unit, missionInfo.missionID);
+        obj.Board[unitObj.BoardIndex] = unitObj;
+    end
+
+    for _, unit in ipairs(missionInfo.followers) do
+        local unitObj = GarrAutoCobatant:New(unit, missionInfo.missionID);
         obj.Board[unitObj.BoardIndex] = unitObj;
     end
 
@@ -168,7 +171,7 @@ function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targ
         };
 
         if not self.Log[self.Round] then
-            table_insert(self.Log, { events = {} })
+            table_insert(self.Log, { events = {} });
         end
 
         local round = self.Log[self.Round];
@@ -543,8 +546,10 @@ function GarrAutoBoard:MakeAction(sourceUnit)
                 else
                     for _, targetIndex in ipairs(targetIndexes) do
                         local targetUnit = self.Board[targetIndex];
-                        local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
-                        table_insert(targetInfo, eventTargetInfo);
+                        if targetUnit then
+                            local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
+                            table_insert(targetInfo, eventTargetInfo);
+                        end
                     end
                 end
 
