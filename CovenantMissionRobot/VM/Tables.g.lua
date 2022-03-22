@@ -1661,7 +1661,8 @@ T.GARR_AUTO_SPELL = {
     } },
     [369] = { NameDef = "Power of Domination", Description = "Stomps on the ground causing a wave of destructive force to ripple outwards, dealing $s1 damage over two turns to all enemies.",
         SpellID = 369, Cooldown = 4, Duration = 2, Flags = 0, SchoolMask = 0x01, Effects = {
-        { ID = 502, SpellID = 369, EffectIndex = 0, Effect = 07, TargetType = 07, Flags = 0x02, Period = 2, Points = 1 },
+        { ID = 502, SpellID = 369, EffectIndex = 0, Effect = 00, TargetType = 00, Flags = 0x01, Period = 0, Points = 1 },
+        { ID = 511, SpellID = 369, EffectIndex = 1, Effect = 07, TargetType = 07, Flags = 0x01, Period = 2, Points = 0.5 },
     } },
     [370] = { NameDef = "Dominating Presence", Description = "Strikes fear in it's opponents, causing them to do $s1% less damage for two turns.",
         SpellID = 370, Cooldown = 5, Duration = 2, Flags = 0, SchoolMask = 0x01, Effects = {
@@ -1673,7 +1674,7 @@ T.GARR_AUTO_SPELL = {
     } },
     [372] = { NameDef = "Mace Smash", Description = "Makes a powerful swing with their mace, striking all enemies in melee for $s1 damage.",
         SpellID = 372, Cooldown = 4, Duration = 0, Flags = 0, SchoolMask = 0x01, Effects = {
-        { ID = 505, SpellID = 372, EffectIndex = 0, Effect = 03, TargetType = 15, Flags = 0x01, Period = 0, Points = 0.8 },
+        { ID = 505, SpellID = 372, EffectIndex = 0, Effect = 03, TargetType = 15, Flags = 0x01, Period = 0, Points = 0.4 },
     } },
     [373] = { NameDef = "Repurpose Anima Flow", Description = "Draws anima from the furthest enemy, dealing $s1 Arcane damage and healing itself for $s2.",
         SpellID = 373, Cooldown = 5, Duration = 0, Flags = 0, SchoolMask = 0x40, Effects = {

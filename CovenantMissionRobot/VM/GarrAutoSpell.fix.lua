@@ -21,16 +21,14 @@ local EffectHandlers = {
 }
 
 local EffectTypes = {
-    [00] = "Does'nt work, just remove it",
     [01] = "Damage",
     [02] = "Heal",
-    [03] = "Damage",
-    [04] = "Heal",
+    [03] = "Damage %",
+    [04] = "Heal %",
     [07] = "DoT",
     [08] = "HoT",
     [09] = "Taunt",
     [10] = "Untargetable",
-    --[11] = "Damage dealt multiplier",
     [12] = "Damage dealt multiplier",
     [13] = "Damage taken multiplier",
     [14] = "Damage taken multiplier",
@@ -151,9 +149,6 @@ local function ApplySpellFixes()
 
     -- Heal the Flock: The ancient creature emits waves of beneficial spores, healing in a cone from the closest ally for $s1.
     T.GARR_AUTO_SPELL[213].Effects[1].TargetType = 2; -- old 10
-
-    -- Mace Smash: Makes a powerful swing with their mace, striking all enemies in melee for $s1 damage.
-    T.GARR_AUTO_SPELL[372].Effects[1].Points = 0.4; -- old 0.8
 
     -- Cannon Barrage: Deals $s1 Fire damage to all enemies. Does not cast immediately.
     -- T.GARR_AUTO_SPELL[339] = nil; -- mission 2307 (Корсар-канонир)
