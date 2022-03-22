@@ -1,4 +1,5 @@
-MissionLogs_*.sql
-VenturePlan_*.lua
+*.sql
+*.lua
 
 !VenturePlan_000.lua
+!CovenantMissionRobot_000.lua
