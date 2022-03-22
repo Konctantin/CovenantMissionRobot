@@ -1,6 +1,5 @@
 local _, T = ...;
 
-local GetAutoAttackSpellId = T.GetAutoAttackSpellId;
 local GARR_AUTO_SPELL = T.GARR_AUTO_SPELL;
 local GarrAutoSpell = T.GarrAutoSpell;
 

@@ -66,32 +66,6 @@ local TargetTypes = {
     [24] = "Env all allies",
 };
 
-local function ThisIsAutoTroops(spells)
-    for _, s in ipairs(spells) do
-        local is = T.GARR_AUTO_TROOP_SPELLS[s.autoCombatSpellID] == 1;
-        if is then
-            return true;
-        end
-    end
-    return false;
-end
-
-local function GetAutoAttackSpellId(role, missionId, boardIndex, firstSpell)
-    -- Default: meele or tank
-    local attackSpellId = (role == 1 or role == 5) and 11 or 15;
-
-    if (boardIndex or 0) > 4 and missionId then
-        local missions = T.ENEMIES_AUTO_ATTACK[boardIndex];
-        local autoAttackSpellId = missions and missions[missionId];
-        attackSpellId = autoAttackSpellId or attackSpellId;
-    elseif firstSpell then
-        local autoAttackSpellId = T.FOLLOWERS_AUTO_ATTACK[firstSpell];
-        attackSpellId = autoAttackSpellId or attackSpellId;
-    end
-
-    return attackSpellId;
-end
-
 local function MakeSomePresetupFilds()
     for s, spell in pairs(T.GARR_AUTO_SPELL) do
         spell.IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
@@ -188,6 +162,4 @@ local function ApplySpellFixes()
     MakeSomePresetupFilds();
 end
 
-T.ThisIsAutoTroops = ThisIsAutoTroops;
-T.GetAutoAttackSpellId = GetAutoAttackSpellId;
 T.ApplySpellFixes = ApplySpellFixes;

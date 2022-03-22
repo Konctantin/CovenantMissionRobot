@@ -111,18 +111,7 @@ end
 
 local garrautospell = loadcsv("wow_csv/garrautospell.csv", "ID");
 local garrautospelleffect = loadcsv("wow_csv/garrautospelleffect.csv", "ID");
-local garrfollower = loadcsv("wow_csv/garrfollower.csv", "ID");
 local garrautocombatant = loadcsv("wow_csv/garrautocombatant.csv", "ID");
-local garrencounter = loadcsv("wow_csv/garrencounter.csv", "ID");
-local garrmissionxencounter = loadcsv("wow_csv/garrmissionxencounter.csv", "ID");
-
-local function WriteHexTable(file)
-    file:write("T.HEX_TABLE = { [0]=");
-    for i = 0, 0xf do
-        file:write(string.format('"%x",', i));
-    end
-    file:write(" };")
-end
 
 local function WritePassiveSpells(file)
     -- passive spells
@@ -139,81 +128,6 @@ local function WritePassiveSpells(file)
         file:write(string.format("[%d]=%d, ", i, v));
     end
     file:write("};");
-end
-
-local function WriteFolloversAA(file)
-    local spells = {}
-    -- AttackSpellID,AbilitySpellID,Role
-    for k, v in pairs(garrfollower) do
-        local follower = garrautocombatant[tonumber(v.AutoCombatantID)];
-        if follower then
-            local r = tonumber(follower.Role);
-            local spellid = tonumber(follower.AbilitySpellID);
-            local aa = tonumber(follower.AttackSpellID);
-            if aa == 11 and (r==0 or r==2 or r==3 or r==4) then
-                spells[spellid] = aa;
-            elseif aa == 15 and (r==1 or r==5) then
-                spells[spellid] = aa;
-            end
-        end
-    end
-
-    file:write("-- [FirstSpellID] = (11-meele/15-range spell id)\n");
-    file:write("T.FOLLOWERS_AUTO_ATTACK = { ")
-    for i, v in sortedPairs(spells) do
-        file:write(string.format("[%d]=%d, ", i, v));
-    end
-    file:write("};");
-end
-
-local function WriteEnemiesAA(file)
-    local set = {};
-    for k, gme in sortedPairs(garrmissionxencounter) do
-        local b = tonumber(gme.BoardIndex);
-        local m = tonumber(gme.GarrMissionID);
-        local ge = garrencounter[tonumber(gme.GarrEncounterID)];
-        local gac = garrautocombatant[tonumber(ge and ge.AutoCombatantID)];
-        if ge and gac and b then
-            local aa = tonumber(gac.AttackSpellID);
-            local r = tonumber(gac.Role);
-            if aa == 11 and (r==0 or r==2 or r==3 or r==4) then
-                if not set[b] then set[b]={} end
-                set[b][m] = aa;
-            elseif aa == 15 and (r==1 or r==5) then
-                if not set[b] then set[b]={} end
-                set[b][m] = aa;
-            end
-        end
-    end
-
-    file:write("T.ENEMIES_AUTO_ATTACK = {\n");
-    file:write("    -- [boardIndex] = {[missionId]=11-meele/15-range}\n")
-    for b, ml in sortedPairs(set) do
-        file:write(string.format("    [%02i] = { ", b))
-        for m, s in sortedPairs(ml) do
-            file:write(string.format("[%i]=%i, ", m, s))
-        end
-        file:write("},\n");
-    end
-    file:write("};");
-end
-
-local function WriteAutoTroopSpells(file)
-    local spells = { };
-    for _, gf in pairs(garrfollower) do
-        if gf.Flags == "18" and gf.FollowerLevel == "20" and tonumber(gf.CovenantID) > 0 then
-            local gac = garrautocombatant[tonumber(gf.AutoCombatantID)];
-            if gac then
-                table.insert(spells, tonumber(gac.AbilitySpellID));
-            end
-        end
-    end
-    file:write("T.GARR_AUTO_TROOP_SPELLS = {");
-    table.sort(spells);
-    for _, s in ipairs(spells) do
-        file:write(string.format(" [%i]=1,", s));
-    end
-    file:write(" };")
 end
 
 local function Extend(value)
@@ -385,19 +299,7 @@ local file = io.open("CovenantMissionRobot/VM/Tables.g.lua", "w");
 
 file:write(HEADER);
 
-WriteHexTable(file);
-file:write("\n\n");
-
 WritePassiveSpells(file);
-file:write("\n\n");
-
-WriteFolloversAA(file);
-file:write("\n\n");
-
-WriteEnemiesAA(file);
-file:write("\n\n");
-
-WriteAutoTroopSpells(file);
 file:write("\n\n");
 
 WritePoints(file);
