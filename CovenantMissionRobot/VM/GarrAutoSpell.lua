@@ -82,6 +82,7 @@ function GarrAutoAura:New(spell, effect, sourceIndex, value)
     local obj = {
         Duration     = spell.Duration;
         Name         = spell.Name;
+        Description  = spell.Description;
         IsAutoAttack = spell.IsAutoAttack,
         SourceIndex  = sourceIndex;
         BaseValue    = value;

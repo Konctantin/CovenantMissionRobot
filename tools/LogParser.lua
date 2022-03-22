@@ -119,19 +119,19 @@ local function parseLog(file, fileName)
         file:write(string.format("DELETE FROM [wow].[dbo].[MissionLogEventTarget] WHERE ID = %s;\n", id));
 
         file:write(string.format("INSERT INTO [wow].[dbo].[MissionLog] VALUES (%s, %i, \'%s\', %d, %i, \'%s\');\n",
-            id, mid, quoteStr(missionLog.missionName), missionLog.missionScalar, missionLog.winner and 1 or 0, fileName));
+            id, mid, quoteStr(missionLog.missionName), missionLog.level, missionLog.winner and 1 or 0, fileName));
 
         -- environment
-        if missionLog.environment and missionLog.environment.autoCombatSpellInfo then
-            local env = missionLog.environment.autoCombatSpellInfo;
+        if missionLog.environmentEffect and missionLog.environmentEffect.autoCombatSpellInfo then
+            local env = missionLog.environmentEffect.autoCombatSpellInfo;
             file:write(string.format("DELETE FROM [wow].[dbo].[MissionLogEnvironment] WHERE MissionId = %i;", mid));
             file:write(string.format("INSERT INTO [wow].[dbo].[MissionLogEnvironment] VALUES (%i, %i, %i, %i, %i, \'%s\', \'%s\');\n",
                 mid, env.autoCombatSpellID, env.cooldown, env.duration, env.hasThornsEffect and 1 or 0,
-                quoteStr(missionLog.environment.name), quoteStr(env.description)));
+                quoteStr(missionLog.environmentEffect.name), quoteStr(env.description)));
         end
 
         -- enemies
-        for e, encounter in ipairs(missionLog.encounters) do
+        for e, encounter in ipairs(missionLog.enemies) do
             file:write(string.format("INSERT INTO [wow].[dbo].[MissionLogUnit] VALUES (%s, %i, %i, %d, %i, %i, %i, %i, %i, \'%s\');\n",
             id, mid, encounter.boardIndex, encounter.attack, encounter.health, encounter.health,
             encounter.isElite and 1 or 0, 0, encounter.role, quoteStr(encounter.name)));
@@ -149,11 +149,17 @@ local function parseLog(file, fileName)
         end
 
         -- followers
-        for e, follower in pairs(missionLog.followers) do
+        for e, follower in ipairs(missionLog.followers) do
             file:write(string.format("INSERT INTO [wow].[dbo].[MissionLogUnit] VALUES (%s, %i, %i, %d, %i, %i, %i, %i, %i, \'%s\');\n",
                 id, mid, follower.boardIndex, follower.attack, follower.health, follower.maxHealth, 0, follower.level, follower.role,
                 quoteStr(follower.name)));
-            for es, spell in ipairs(follower.spells) do
+
+            local a = follower.autoCombatAutoAttack;
+            file:write(string.format("INSERT INTO [wow].[dbo].[MissionLogUnitSpell] VALUES (%s, %i, %i, %i, %i, %i, %i, %i, %i, %i, %i, \'%s\', \'%s\');\n",
+                id, mid, follower.boardIndex, 0, a.autoCombatSpellID, a.cooldown, a.duration, a.hasThornsEffect and 1 or 0,
+                a.previewMask, a.schoolMask, a.spellTutorialFlag, quoteStr(a.name), quoteStr(a.description)));
+
+            for es, spell in ipairs(follower.autoCombatSpells) do
                 file:write(string.format("INSERT INTO [wow].[dbo].[MissionLogUnitSpell] VALUES (%s, %i, %i, %i, %i, %i, %i, %i, %i, %i, %i, \'%s\', \'%s\');\n",
                     id, mid, follower.boardIndex, es, spell.autoCombatSpellID, spell.cooldown, spell.duration,
                     spell.hasThornsEffect and 1 or 0, 0, 0, 0, quoteStr(spell.name), quoteStr(spell.description)));

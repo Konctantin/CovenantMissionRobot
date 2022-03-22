@@ -35,23 +35,25 @@ local function SaveCombatLog(missionID, canComplete, success, bonusRollSuccess, 
 
     --table.insert(CMR_LOGS, logInfo);
 
-    local logOK, simOK = T.CheckSimulation(logInfo);
-    if not logOK then
-        print(string.format("Log for mission %i is corrupted!", missionID));
-    elseif not simOK then
+    local board = T.GarrAutoBoard:New(logInfo);
+    board.LogEnabled = false;
+    board:Simulate();
+
+    local simOK = board:CheckSimulation(logInfo);
+    if not simOK then
         CMR_MISSIONS.ERROR[missionID] = (CMR_MISSIONS.ERROR[missionID] or 0) + 1;
         while #CMR_LOGS > 300 do
             table.remove(CMR_LOGS, 1);
         end
         table.insert(CMR_LOGS, logInfo);
-        print(string.format("Mission %i log was stored", missionID));
-    else
-        CMR_MISSIONS.OK[missionID] = (CMR_MISSIONS.OK[missionID] or 0) + 1;
-        while #CMR_LOGS > 300 do
-            table.remove(CMR_LOGS, 1);
+        if T.IsDebug then
+            print(string.format("Mission %i log was stored", missionID));
         end
-        table.insert(CMR_LOGS, logInfo);
-        print(string.format("Mission %i simulation is succesfull!", missionID));
+    else
+        if T.IsDebug then
+            CMR_MISSIONS.OK[missionID] = (CMR_MISSIONS.OK[missionID] or 0) + 1;
+            print(string.format("|cff00ff00Mission %i simulation is succesfull!|r", missionID));
+        end
     end
 end
 

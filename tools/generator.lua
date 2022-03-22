@@ -19,7 +19,6 @@ local _, T = ...;
 --  Period - Period of effect
 
 -- Effect type list:
---  00 - Does'nt work, just remove it
 --  01 - Damage
 --  02 - Heal
 --  03 - Damage
@@ -34,7 +33,6 @@ local _, T = ...;
 --  14 - Damage taken multiplier
 --  15 - Reflect
 --  16 - Reflect
---  17 - Test ability ???
 --  18 - Maximum HP multiplier
 --  19 - Additional damage dealt
 --  20 - Additional receive damage

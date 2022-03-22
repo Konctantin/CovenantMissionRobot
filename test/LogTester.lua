@@ -23,7 +23,7 @@ loadfile('VenturePlan/vs.lua')(T.Name, T);
 
 loadfile('test/utils.lua')(T.Name, T);
 
-loadfile("Logs/CovenantMissionRobot.lua")(T.Name, T);
+loadfile("Logs/CovenantMissionRobot_001.lua")(T.Name, T);
 
 --print('Simulator has bin loaded!');
 
@@ -48,30 +48,32 @@ round 5 - aura bug, simulation: true
 № 69 LogID: 16424234510005 Mission: 2202 HasRandom: NO Log: OK
 № 92 LogID: 16424242540004 Mission: 2277 HasRandom: NO Log: OK
 ]]
-local function padl(str, cnt)
-    local r = string.len(str);
-    for _ = r, cnt do
-        str=str..' ';
-    end
-    return str;
-end
-local function CheckSim(cp1, cp2)
-    for r = 0, math.max(#cp1, #cp2) do
-        local l1 = cp1[r];
-        local l2 = cp2[r];
-        if l1 ~= l2 then
-            return false;
+
+local function PrintSim(simCp, blzCp)
+    for r = 0, math.max(#simCp, #blzCp) do
+        local simRound, blzRound = simCp[r], blzCp[r];
+        local units = {};
+        local isok = true;
+        for i = 0, 12 do
+            if simRound[i] or blzRound[i] then
+                table.insert(units, string.format("%i(%i/%i)", i, simRound[i] or 0, blzRound[i] or 0));
+                if (simRound[i] or -1) ~= (blzRound[i] or -1) then
+                    isok = false;
+                end
+            end
         end
+        print(r, table.concat(units, " "), (isok and "OK" or ""));
     end
     return true;
 end
+
 local start = 1
 for i, report in ipairs(CMR_LOGS) do
-    if 1 == 1 then
+    if report.missionID == 2191 then
     --if CMR_MISSIONS and CMR_MISSIONS.ERROR and CMR_MISSIONS.ERROR[report.missionID] then
     --if i >= start and i < start+10 then
-    --if report.id == '16424218120003' then
-        local isOK, baseCheckpoints = T.GenerateCheckpoints(report);
+    --if report.id == '16478833362191' then
+        local isOK, baseCheckpoints = T.CreateCheckPoints(report);
 
         local board = T.GarrAutoBoard:New(report);
         board.LogEnabled = true;
@@ -81,31 +83,17 @@ for i, report in ipairs(CMR_LOGS) do
             i, report.id, report.missionID, (board.HasRandomSpells and "YES" or "NO"),
             (isOK and "OK" or "Broken!")));
 
-        --for i=0,12 do
-        --    local u = cmr.Board[i];
-        --    if u then
-        --        print(string.format("[%i] %s", i, u.Name));
-        --        for _, s in ipairs(u.Spells) do
-        --            print(string.format("  [%03i] %s", s.SpellID, s.Name));
-        --        end
-        --    end
-        --end
-
-        board:Run();
-
-        local isOKSim = CheckSim(board.CheckPoints, baseCheckpoints);
+        board:Simulate(10);
+        local isOKSim = board:CheckSimulation(board.CheckPoints, baseCheckpoints);
 
         if isOKSim then
             print("Simulation: OK!")
         else
-            T.PrintComparedLogs(board.Log, report.log, false);
+            --T.PrintComparedLogs(board.Log, report.log, false);
             print("");
-            for r = 0, math.max(#board.CheckPoints, #baseCheckpoints) do
-                local l1 = board.CheckPoints[r];
-                local l3 = baseCheckpoints[r];
-                print(r, padl(l1,70), l3, (l1==l3 and "ok" or ""));
-            end
+            PrintSim(board.CheckPoints, baseCheckpoints);
         end
+        --break;
     end
 end
 

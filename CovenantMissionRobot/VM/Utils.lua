@@ -1,90 +1,39 @@
 local _, T = ...;
 
-local generateCheckpoints do
-    local hex = { }
-    for i = 0, 12 do
-        hex[i] = ("%x"):format(i)
+local function CreateCheckPoints(report)
+    local checkpoints = { [0] = {} };
+
+    for _, u in ipairs(report.enemies) do
+        checkpoints[0][u.boardIndex] = u.health;
     end
 
-    local function checkpointBoard(b)
-        local r = ""
-        for i = 0, 12 do
-            local lh = b[i] or 0
-            if lh > 0 then
-                r = (r ~= "" and r .. "_" or "") .. hex[i] .. ":" .. lh
+    for _, u in ipairs(report.followers) do
+        checkpoints[0][u.boardIndex] = u.health;
+    end
+
+    for i, r in ipairs(report.log) do
+        checkpoints[i] = {};
+
+        for k, v in pairs(checkpoints[i-1]) do
+            checkpoints[i][k] = v;
+        end
+
+        for _, e in ipairs(r.events) do
+            if not checkpoints[i][e.casterBoardIndex] then
+                return false, nil;
             end
-        end
-        return r
-    end
 
-    function generateCheckpoints(cr)
-        local envs = cr.environmentEffect and cr.environmentEffect.autoCombatSpellInfo;
-        local checkpoints = {};
-        local board = {[-1] = envs and true or nil};
-
-        for i = 1, #cr.enemies do
-            local e = cr.enemies[i];
-            board[e.boardIndex] = e.health;
-        end
-
-        for _, v in pairs(cr.followers) do
-            board[v.boardIndex] = v.health;
-        end
-
-        checkpoints[0] = checkpointBoard(board);
-        for r = 1, #cr.log do
-            local events = cr.log[r].events;
-            for e = 1, #events do
-                local ti = events[e].targetInfo;
-                local cidx = events[e].casterBoardIndex;
-
-                if not board[cidx] then
-                    return false
-                end
-
-                for i = 1, ti and #ti or 0 do
-                    local tii  = ti[i];
-                    local tidx = tii.boardIndex;
-                    if not board[tidx] then
-                        return false;
-                    elseif tii.newHealth then
-                        board[tidx] = tii.newHealth;
-                    end
+            for _, t in ipairs(e.targetInfo) do
+                if not checkpoints[i][t.boardIndex] then
+                    return false, nil;
+                else
+                    checkpoints[i][t.boardIndex] = t.newHealth;
                 end
             end
-            checkpoints[r] = checkpointBoard(board);
-        end
-
-        if checkpoints[#checkpoints] == checkpoints[#checkpoints-1] then
-            checkpoints[#checkpoints] = nil;
-        end
-
-        return true, checkpoints;
-    end
-end
-
--- return logOK, simOK
-local function CheckSimulation(report)
-    local isOK, baseCheckpoints = generateCheckpoints(report);
-    if not isOK then
-        return false, false;
-    end
-
-    local board = T.GarrAutoBoard:New(report);
-    board.LogEnabled = false;
-    board:Run();
-
-    if #baseCheckpoints ~= #board.CheckPoints then
-        return true, false;
-    end
-
-    for i = 0, math.min(#baseCheckpoints, #board.CheckPoints) do
-        if baseCheckpoints[i] ~= board.CheckPoints[i] then
-            return true, false;
         end
     end
 
-    return true, true;
+    return true, checkpoints;
 end
 
 function GetAutoFollowerInfo(guid, boardIndex)
@@ -116,12 +65,14 @@ function GetMissionBoardInfo(missionPage)
         return { };
     end
 
+    local mdi = C_Garrison.GetMissionDeploymentInfo(missionPage.missionInfo.missionID);
+
     local info = {
         missionID = missionPage.missionInfo.missionID,
         name = missionPage.missionInfo.name,
         level = missionPage.missionInfo.level,
-        enemies = missionPage.missionInfo.enemies,
         environmentEffect = missionPage.missionInfo.environmentEffect,
+        enemies = mdi.enemies,
         followers = { },
     };
 
@@ -137,7 +88,6 @@ function GetMissionBoardInfo(missionPage)
     return info;
 end
 
-T.CheckSimulation = CheckSimulation;
-T.GenerateCheckpoints = generateCheckpoints;
+T.CreateCheckPoints = CreateCheckPoints;
 T.GetAutoFollowerInfo = GetAutoFollowerInfo;
 T.GetMissionBoardInfo = GetMissionBoardInfo;

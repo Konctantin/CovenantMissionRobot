@@ -20,6 +20,7 @@ end
 local function RegisterHooks()
     hooksecurefunc(CovenantMissionFrame, "InitiateMissionCompletion", HookShowMission);
     hooksecurefunc(CovenantMissionFrame, "UpdateAllyPower", HookShowMission);
+    --hooksecurefunc(C_Garrison, "AddFollowerToMission", HookShowMission);
 
     hooksecurefunc(CovenantMissionFrame, "CloseMission", HookCloseMission);
     hooksecurefunc(CovenantMissionFrame, "CloseMissionComplete", HookCloseMission);
@@ -50,34 +51,38 @@ function Events.GARRISON_MISSION_COMPLETE_RESPONSE(missionID, canComplete, succe
 end
 
 function Events.GARRISON_MISSION_FINISHED(followerTypeID, missionID)
-    --
+
 end
 
 function Events.GARRISON_MISSION_LIST_UPDATE(garrFollowerTypeID)
-    --
+
 end
 
 function Events.GARRISON_MISSION_NPC_CLOSED()
-    --
+    -- stop calculation
 end
 
 function Events.GARRISON_MISSION_NPC_OPENED(followerTypeID)
-    --
+    if followerTypeID == 123 then
+        -- some presetups for table
+    end
+end
+
+function Events.GARRISON_FOLLOWER_ADDED(...)
+
 end
 
 local function ProcessEvents(_, event, ...)
     if Events[event] then
-        --print(event);
         Events[event](...);
     end
 end
 
-MainFrame:RegisterEvent("ADDON_LOADED");
-MainFrame:RegisterEvent("GARRISON_MISSION_COMPLETE_RESPONSE");
-MainFrame:RegisterEvent("GARRISON_MISSION_FINISHED");
-MainFrame:RegisterEvent("GARRISON_MISSION_LIST_UPDATE");
-MainFrame:RegisterEvent("GARRISON_MISSION_NPC_CLOSED");
-MainFrame:RegisterEvent("GARRISON_MISSION_NPC_OPENED");
+for event in pairs(Events) do
+    MainFrame:RegisterEvent(event);
+    --print("reg", event)
+end
+
 MainFrame:SetScript("OnEvent", ProcessEvents);
 MainFrame:Show();
 

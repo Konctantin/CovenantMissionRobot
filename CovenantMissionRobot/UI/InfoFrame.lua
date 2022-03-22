@@ -1,5 +1,8 @@
 local _, T = ...;
 
+local C_RED   = "ffff0000";
+local C_GREEN = "ff00ff00";
+
 local HELPER_POINTS = {
     [0] = { x=-150, y=090, alignment="BOTTOM" },
     [1] = { x= 150, y=090, alignment="BOTTOM" },
@@ -18,39 +21,134 @@ local HELPER_POINTS = {
     [12]= { x= 190, y= 25, alignment="TOP" },
 }
 
-local function SetupLables(place)
+local function CreateIconButton(parent, size, texture, tooltip)
+
+    local function OnEnter(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT");
+        GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMRIGHT", 0, 0);
+        GameTooltip_AddNormalLine(GameTooltip, tooltip or "");
+        GameTooltip:Show();
+    end
+
+    local function OnLeave()
+        GameTooltip_Hide();
+    end
+
+    local button = CreateFrame("Button", nil, parent);
+    button:SetSize(size, size);
+    button:SetNormalTexture(texture or "Interface/Icons/Temp");
+    button:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square");
+    button:GetHighlightTexture():SetBlendMode("ADD");
+    button:SetPushedTexture("Interface/Buttons/UI-Quickslot-Depress");
+    button:GetPushedTexture():SetDrawLayer("OVERLAY");
+
+    local icon = button:CreateTexture(nil, "ARTWORK");
+    icon:SetAllPoints();
+    icon:SetTexture(texture or "Interface/Icons/Temp");
+    button.Icon = icon;
+
+    --button.tooltipText = tooltip;
+
+    button:SetScript('OnEnter', OnEnter)
+    button:SetScript('OnLeave', OnLeave)
+
+    return button;
+end
+
+local function CreateButtons(place)
+    -- Clear board
+    if not place.ClearButton then
+        local button = CreateIconButton(place, 32, "interface/buttons/ui-minusbutton-up", "Clear board");
+        button:SetPoint("LEFT", 20, -30);
+        button:SetScript("OnClick", function()
+            local frames = CovenantMissionFrame.MissionTab.MissionPage.Board.framesByBoardIndex;
+            for i = 0, 4 do
+                if frames[i].info then
+                    CovenantMissionFrame:RemoveFollowerFromMission(frames[i], true);
+                end
+            end
+        end);
+
+        place.ClearButton = button;
+    end
+
+    -- Find best disposition
+    if not place.FindBestDisposition then
+        local button = CreateIconButton(place, 32, "Interface/Icons/inv_inscription_tomeoftheclearmind", "Find best disposition");
+        button:SetPoint("LEFT", 20, -70);
+        button:SetScript("OnClick", function()
+            print("not now");
+        end);
+        place.FindBestDisposition = button;
+    end
+
+    -- Recalc
+    if not place.RecalcButton then
+        local button = CreateIconButton(place, 32, "Interface/Icons/inv_inscription_tomeoftheclearmind", "Recalc");
+        button:SetPoint("LEFT", 20, -110);
+        button:SetScript("OnClick", function()
+            print("not now");
+        end);
+        place.RecalcButton = button;
+    end
+end
+
+local function SetupHelpControls(place)
     for i, point in pairs(HELPER_POINTS) do
         local name = "inf"..tostring(i);
-        if not place[name] then
-            place[name] = place:CreateFontString(name, "OVERLAY", "GameFontNormal");
-            place[name]:SetSize(160, 30);
-            place[name]:SetPoint(point.alignment, point.x, point.y);
+        local helpLabel = place[name];
+        if not helpLabel then
+            helpLabel = place:CreateFontString(name, "OVERLAY", "GameFontNormal");
+            helpLabel:ClearAllPoints();
+            helpLabel:SetSize(160, 30);
+            helpLabel:SetPoint(point.alignment, point.x, point.y);
+            place[name] = helpLabel;
         end
-        place[name]:SetText("");
+        helpLabel:SetText("");
     end
+
+    CreateButtons(place);
+end
+
+local function ShowMissionID(place, missionInf)
+    if not place.MissionIdLabel then
+        local lable = place:CreateFontString("missionIdLabel", "OVERLAY", "GameFontNormal");
+        lable:ClearAllPoints();
+        lable:SetSize(60, 30);
+        lable:SetPoint("BOTTOMRIGHT", -30, -30);
+        place.MissionIdLabel = lable;
+    end
+    place.MissionIdLabel:SetText("ID: "..tostring(missionInf.missionID));
 end
 
 local function Simulate(place)
     local missionInf = T.GetMissionBoardInfo();
+
+    ShowMissionID(place, missionInf);
+
     if #missionInf.followers > 0 then
         local board = T.GarrAutoBoard:New(missionInf);
         board:Run();
 
         for i = 0, 12 do
             local u = board.Board[i];
-            local name = "inf"..tostring(i);
-            if u and place[name] then
-                local color = u.CurHP == 0 and "ffff0000" or "ff00ff00";
-                place[name]:SetText(string.format("|c%s%i/%i|r", color, u.CurHP, u.MaxHP));
+            local helpLabel = place["inf"..tostring(i)];
+            if u and helpLabel then
+                --local cmin, cmax = board.MinHP[i], board.MaxHP[i];
+                local color = u.CurHP == 0 and C_RED or C_GREEN;
+                local percent = u.CurHP > 0 and string.format(" (%i%%)", (u.CurHP*100)/u.MaxHP) or "";
+                helpLabel:SetText(string.format("|c%s%i/%i%s|r", color, u.CurHP, u.MaxHP, percent));
             end
         end
     end
 end
 
 local function ShowInfoFrame()
-    local place = CovenantMissionFrame.MissionTab.MissionPage.Board;
-    SetupLables(place);
-    Simulate(place);
+    local missionPage = CovenantMissionFrame:GetMissionPage();
+    SetupHelpControls(missionPage.Board);
+    if missionPage and missionPage.missionInfo then
+        Simulate(missionPage.Board);
+    end
 end
 
 T.ShowInfoFrame = ShowInfoFrame;

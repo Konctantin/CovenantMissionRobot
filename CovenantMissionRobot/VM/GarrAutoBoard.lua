@@ -94,6 +94,7 @@ local GarrAutoBoard = {
     IsWin           = false,
     Round           = 1,
     Event           = 1,
+    Forks = { },
     MinHP = { }, -- MinHP[boardIndex] = CurHP
     MaxHP = { }, -- MaxHP[boardIndex] = CurHP
 };
@@ -110,10 +111,14 @@ function GarrAutoBoard:New(missionInfo)
         IsWin = false,
         Round = 1,
         Event = 1,
+        Forks = { },
         MinHP = { }, -- MinHP[boardIndex] = CurHP
         MaxHP = { }, -- MaxHP[boardIndex] = CurHP
-        BlizzardLog = missionInfo.log -- only for testing
+        BlizzardLog = missionInfo -- only for testing
     };
+
+    self.__index = self;
+    setmetatable(obj, self);
 
     if missionInfo.environmentEffect then
         local envUnit = GarrAutoCobatant:NewEnv(missionInfo);
@@ -125,10 +130,7 @@ function GarrAutoBoard:New(missionInfo)
         obj.Board[unitObj.BoardIndex] = unitObj;
     end
 
-    for _, unit in ipairs(missionInfo.followers) do
-        local unitObj = GarrAutoCobatant:New(unit, missionInfo.missionID);
-        obj.Board[unitObj.BoardIndex] = unitObj;
-    end
+    obj:SetupFollowers(missionInfo.followers);
 
     for _, unit in pairs(obj.Board) do
         if unit and unit:HasRandomSpells() then
@@ -136,9 +138,6 @@ function GarrAutoBoard:New(missionInfo)
             break;
         end
     end
-
-    self.__index = self;
-    setmetatable(obj, self);
 
     return obj;
 end
@@ -154,8 +153,21 @@ function GarrAutoBoard:SetupFollowers(folowers)
     end
 end
 
-function GarrAutoBoard:SetupBlizzardLog(log)
-    self.BlizzardLog = log;
+function GarrAutoBoard:DumpMinMaxHP()
+    for i = 0, 4 do
+        local unit = self.Board[i];
+        if unit then
+            local hp = unit.CurHP;
+            local min = self.MinHP[i];
+            local max = self.MaxHP[i];
+            if not min or hp < min then
+                self.MinHP[i] = hp;
+            end
+            if not max or hp > max then
+                self.MaxHP[i] = hp;
+            end
+        end
+    end
 end
 
 function GarrAutoBoard:AddEvent(spell, effect, eventType, casterBoardIndex, targetInfo)
@@ -226,7 +238,7 @@ function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
     local dealt, taken, damage = 1, 1, 0;
 
     for _, aura in ipairs(sourceUnit.Auras) do
-        if aura.Effect == 11 or aura.Effect == 12 then
+        if aura.Effect == 12 then
             dealt = dealt + aura.BaseValue;
         elseif aura.Effect == 19 then
             damage = damage + aura.BaseValue;
@@ -234,7 +246,7 @@ function GarrAutoBoard:GetAdditionalDamage(sourceUnit, targetUnit, value)
     end
 
     for _, aura in ipairs(targetUnit.Auras) do
-        if aura.Effect == 13 or aura.Effect == 14 then
+        if aura.Effect == 14 then
             taken = taken + aura.BaseValue;
         elseif aura.Effect == 20 then
             damage = damage + aura.BaseValue;
@@ -250,9 +262,7 @@ end
 function GarrAutoBoard:CalculateEffectValue(sourceUnit, targetUnit, effect)
     local value = 0;
 
-    if effect.IsReflect then
-        value = Round(effect.Points, targetUnit.Attack);
-    elseif effect.IsMaxHPMultilier then
+    if effect.IsMaxHPMultilier then
         value = Round(effect.Points, targetUnit.MaxHP);
     else
         value = Round(effect.Points, sourceUnit.Attack);
@@ -281,7 +291,7 @@ function GarrAutoBoard:ApplyAura(sourceUnit, targetUnit, spell, effect, value)
     local aura = GarrAutoAura:New(spell, effect, sourceUnit.BoardIndex, value);
     table_insert(targetUnit.Auras, aura);
     local result = 0
-    if effect.IsDotOrHot and effect.ExtraInitialPeriod then
+    if effect.IsDotOrHot and effect.FirstTick then
         local targetInfo = {
             BoardIndex = targetUnit.BoardIndex,
             MaxHP = targetUnit.MaxHP,
@@ -427,7 +437,7 @@ end
 function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
     local targetUnit = self.Board[eventTargetInfo.BoardIndex];
     local reflAura = targetUnit.ReflectAura;
-    if effect.IsDamage and targetUnit and reflAura then
+    if effect.IsDamage and targetUnit and targetUnit.CurHP > 0 and reflAura then
         local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, spell, reflAura, true);
         -- can be mele or range
         local logEventType = GetLogEventType(effect);
@@ -467,8 +477,8 @@ function GarrAutoBoard:GetTargets(unit, targetType, lastTargetType, lastTargetIn
     local mainTarget = unit.TauntedBy;
 
     -- for check and debugging random spell effects
-    if self.BlizzardLog and (targetType == 19 or targetType == 20 or targetType == 21) then
-        local roundInfo = self.BlizzardLog[self.Round];
+    if self.BlizzardLog.log and (targetType == 19 or targetType == 20 or targetType == 21) then
+        local roundInfo = self.BlizzardLog.log[self.Round];
         if roundInfo and roundInfo.events and #roundInfo.events > 0 then
             local eventInfo = roundInfo.events[self.Event];
             if eventInfo and eventInfo.targetInfo and #eventInfo.targetInfo == 1 then
@@ -535,6 +545,7 @@ function GarrAutoBoard:MakeAction(sourceUnit)
 
         lastTargetType = -1
         for _, effect in ipairs(spell.Effects) do
+            --local effectHandler = self[effect.HandlerName];
             targetIndexes, isRandomFork = self:GetTargets(sourceUnit, effect.TargetType, lastTargetType, targetIndexes);
             -- todo:
             local needCast = self:PrepareCast(targetIndexes, spell, effect);
@@ -547,6 +558,7 @@ function GarrAutoBoard:MakeAction(sourceUnit)
                     for _, targetIndex in ipairs(targetIndexes) do
                         local targetUnit = self.Board[targetIndex];
                         if targetUnit then
+                            --local result = effectHandler(self, sourceUnit, targetUnit, spell, effect);
                             local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
                             table_insert(targetInfo, eventTargetInfo);
                         end
@@ -590,24 +602,17 @@ function GarrAutoBoard:Step()
 end
 
 function GarrAutoBoard:AddCheckpoint(index)
-    local unitsInfo = {};
+    local checkpoint = {};
     for i = 0, 12 do
         local unit = self.Board[i];
-        if unit and unit:IsAlive() then
-            table_insert(unitsInfo, ("%x:%d"):format(i, unit.CurHP));
+        if unit then
+            checkpoint[i] = unit.CurHP;
         end
     end
-
-    local checkpoint = table_concat(unitsInfo, "_");
     if index then
         self.CheckPoints[index] = checkpoint;
     else
         table_insert(self.CheckPoints, checkpoint);
-    end
-
-    local idx = #self.CheckPoints;
-    if self.CheckPoints[idx] == self.CheckPoints[idx-1] then
-        self.CheckPoints[idx] = nil;
     end
 end
 
@@ -618,6 +623,17 @@ function GarrAutoBoard:Run()
         self:Step();
         self:CheckMissionOver();
         self.Round = self.Round + 1;
+    end
+    self:DumpMinMaxHP();
+end
+
+function GarrAutoBoard:Simulate(maxIteration)
+    if self.HasRandomSpells and not self.BlizzardLog.log then
+        for _ = 1, (maxIteration or 100) do
+            self:Run();
+        end
+    else
+        self:Run();
     end
 end
 
@@ -633,6 +649,62 @@ function GarrAutoBoard:Reset()
             unit:Reset();
         end
     end
+end
+
+function GarrAutoBoard:CheckSimulation()
+    if not self.BlizzardLog.log then
+        return false;
+    end
+    local _, blzCheckpoints = T.CreateCheckPoints(self.BlizzardLog);
+    for r = 0, math.max(#self.CheckPoints, #blzCheckpoints) do
+        local simRound, blzRound = self.CheckPoints[r], blzCheckpoints[r];
+        for i = 0, 12 do
+            if simRound[i] or blzRound[i] then
+                if (simRound[i] or -1) ~= (blzRound[i] or -1) then
+                    return false;
+                end
+            end
+        end
+    end
+    return true;
+end
+
+-- todo
+-- 1, 3
+function GarrAutoBoard:HANDLE_DAMAGE(sourceUnit, targetUnit, spell, effect)
+end
+-- 2, 4
+function GarrAutoBoard:HANDLE_HEAL(sourceUnit, targetUnit, spell, effect)
+end
+-- 7
+function GarrAutoBoard:HANDLE_DOT(sourceUnit, targetUnit, spell, effect)
+end
+-- 8
+function GarrAutoBoard:HANDLE_HOT(sourceUnit, targetUnit, spell, effect)
+end
+-- 9
+function GarrAutoBoard:HANDLE_TAUNT(sourceUnit, targetUnit, spell, effect)
+end
+-- 10
+function GarrAutoBoard:HANDLE_NOTARGET(sourceUnit, targetUnit, spell, effect)
+end
+-- 12
+function GarrAutoBoard:HANDLE_DDM(sourceUnit, targetUnit, spell, effect)
+end
+-- 14
+function GarrAutoBoard:HANDLE_DTM(sourceUnit, targetUnit, spell, effect)
+end
+-- 15, 16
+function GarrAutoBoard:HANDLE_REFLECT(sourceUnit, targetUnit, spell, effect)
+end
+-- 18
+function GarrAutoBoard:HANDLE_MAXHP(sourceUnit, targetUnit, spell, effect)
+end
+-- 19
+function GarrAutoBoard:HANDLE_ADD(sourceUnit, targetUnit, spell, effect)
+end
+-- 20
+function GarrAutoBoard:HANDLE_ADT(sourceUnit, targetUnit, spell, effect)
 end
 
 T.GarrAutoBoard = GarrAutoBoard;

@@ -2,6 +2,24 @@ local _, T = ...;
 
 local IsDebug = T.IsDebug == true;
 
+local EffectHandlers = {
+    [1]  = "HANDLE_DAMAGE",
+    [2]  = "HANDLE_HEAL",
+    [3]  = "HANDLE_DAMAGE",
+    [4]  = "HANDLE_HEAL",
+    [7]  = "HANDLE_DOT",
+    [8]  = "HANDLE_HOT",
+    [9]  = "HANDLE_TAUNT",
+    [10] = "HANDLE_NOTARGET",
+    [12] = "HANDLE_DDM",
+    [14] = "HANDLE_DTM",
+    [15] = "HANDLE_REFLECT",
+    [16] = "HANDLE_REFLECT",
+    [18] = "HANDLE_MAXHP",
+    [19] = "HANDLE_ADD",
+    [20] = "HANDLE_ADT",
+}
+
 local EffectTypes = {
     [00] = "Does'nt work, just remove it",
     [01] = "Damage",
@@ -12,7 +30,7 @@ local EffectTypes = {
     [08] = "HoT",
     [09] = "Taunt",
     [10] = "Untargetable",
-    [11] = "Damage dealt multiplier",
+    --[11] = "Damage dealt multiplier",
     [12] = "Damage dealt multiplier",
     [13] = "Damage taken multiplier",
     [14] = "Damage taken multiplier",
@@ -88,6 +106,8 @@ local function MakeSomePresetupFilds()
             local ef = effect.Effect;
             local tt = effect.TargetType;
 
+            effect.HandlerName = EffectHandlers[ef];
+
             -- Random effects
             if tt == 19 or tt == 20 or tt == 21 then
                 spell.HasRandomEffect = true;
@@ -100,23 +120,21 @@ local function MakeSomePresetupFilds()
             effect.IsAura           = ef >= 7;
             effect.IsDamage         = ef == 1 or ef == 3;
             effect.IsHeal           = ef == 2 or ef == 4;
-            effect.IsTaunt          = ef == 9;
             effect.IsDot            = ef == 7;
             effect.IsHot            = ef == 8;
             effect.IsDotOrHot       = ef == 7 or ef == 8;
+            effect.IsTaunt          = ef == 9;
             effect.IsUntargetable   = ef == 10;
             effect.IsReflect        = ef == 15 or ef == 16;
             effect.IsMaxHPMultilier = ef == 18;
-            effect.UsePoints        = ef == 11 -- DamageDealtMultiplier ??? todo: check it
-                                   or ef == 12 -- DamageDealtMultiplier_2
-                                   or ef == 13 -- DamageTakenMultiplier
-                                   or ef == 14 -- DamageTakenMultiplier_2
+            effect.UsePoints        = ef == 12 -- DamageDealtMultiplier
+                                   or ef == 14 -- DamageTakenMultiplier
                                    or ef == 15 -- Reflect
                                    or ef == 16;-- Reflect_2
 
             -- Flags properties
-            effect.ExtraInitialPeriod = bit.band(effect.Flags, 2) > 0;
-            effect.UseAttackForPoint  = bit.band(effect.Flags, 1) > 0;
+            effect.FirstTick = bit.band(effect.Flags, 2) > 0;
+            effect.UseAttackForPoint = bit.band(effect.Flags, 1) > 0;
 
             if IsDebug then
                 effect.EffectName = EffectTypes[ef] or "<unk>";

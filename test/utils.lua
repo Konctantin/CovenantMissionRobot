@@ -24,13 +24,7 @@ T.SchoolMask = {
 };
 
 local function CompareTypes(t1,t2)
-    return t1 == t2
-        -- spell meele and spell range
-        or (t1 == 2 and t2 == 3)
-        or (t1 == 3 and t2 == 2)
-        -- aa meele and aa range
-        or (t1 == 0 and t2 == 1)
-        or (t1 == 1 and t2 == 0);
+    return (t1==t2) or (t1 >=0 and t1 <= 3) and (t2 >= 0 and t2 <= 3);
 end
 
 local function PrintComparedLogs(sim, log, onlyFails)
