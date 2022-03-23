@@ -9,7 +9,6 @@ local math_max     = _G.math.max;
 local table_insert = _G.table.insert;
 local table_sort   = _G.table.sort;
 local table_remove = _G.table.remove;
-local table_concat = _G.table.concat;
 
 local UseSimpleRounding = T.UseSimpleRounding;
 local PREDEFINED_POINTS = T.PREDEFINED_POINTS;
@@ -603,10 +602,10 @@ end
 
 function GarrAutoBoard:AddCheckpoint(index)
     local checkpoint = {};
-    for i = 0, 12 do
+    for i = -1, 12 do
         local unit = self.Board[i];
         if unit then
-            checkpoint[i] = unit.CurHP;
+            checkpoint[i] = (i == -1) and 1 or unit.CurHP;
         end
     end
     if index then

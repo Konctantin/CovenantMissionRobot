@@ -3,6 +3,10 @@ local _, T = ...;
 local function CreateCheckPoints(report)
     local checkpoints = { [0] = {} };
 
+    if report.environmentEffect then
+        checkpoints[0][-1] = 1;
+    end
+
     for _, u in ipairs(report.enemies) do
         checkpoints[0][u.boardIndex] = u.health;
     end
