@@ -1,7 +1,5 @@
 local _, T = ...;
 
-local IsDebug = T.IsDebug == true;
-
 local EffectHandlers = {
     [1]  = "HANDLE_DAMAGE",
     [2]  = "HANDLE_HEAL",
@@ -108,7 +106,7 @@ local function MakeSomePresetupFilds()
             effect.FirstTick = bit.band(effect.Flags, 2) > 0;
             effect.UseAttackForPoint = bit.band(effect.Flags, 1) > 0;
 
-            if IsDebug then
+            if T.IsDebug then
                 effect.EffectName = EffectTypes[ef] or "<unk>";
                 effect.TargetTypeName = TargetTypes[tt] or "<unk>";
             end

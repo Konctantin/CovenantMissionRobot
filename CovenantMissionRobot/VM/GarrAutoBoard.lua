@@ -655,7 +655,12 @@ function GarrAutoBoard:CheckSimulation()
     if not self.BlizzardLog.log then
         return false;
     end
-    local _, blzCheckpoints = T.CreateCheckPoints(self.BlizzardLog);
+
+    local blzLogOk, blzCheckpoints = T.CreateCheckPoints(self.BlizzardLog);
+    if not blzLogOk then
+        return false;
+    end
+
     for r = 0, math.max(#self.CheckPoints, #blzCheckpoints) do
         local simRound, blzRound = self.CheckPoints[r], blzCheckpoints[r];
         for i = 0, 12 do
@@ -666,6 +671,7 @@ function GarrAutoBoard:CheckSimulation()
             end
         end
     end
+
     return true;
 end
 
