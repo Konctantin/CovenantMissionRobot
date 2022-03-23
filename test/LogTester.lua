@@ -69,10 +69,10 @@ end
 
 local start = 1
 for i, report in ipairs(CMR_LOGS) do
-    if report.missionID == 2191 then
+    --if report.missionID == 2191 then
     --if CMR_MISSIONS and CMR_MISSIONS.ERROR and CMR_MISSIONS.ERROR[report.missionID] then
     --if i >= start and i < start+10 then
-    --if report.id == '16478833362191' then
+    if report.id == '16478833362191' then
         local isOK, baseCheckpoints = T.CreateCheckPoints(report);
 
         local board = T.GarrAutoBoard:New(report);
@@ -89,7 +89,7 @@ for i, report in ipairs(CMR_LOGS) do
         if isOKSim then
             print("Simulation: OK!")
         else
-            --T.PrintComparedLogs(board.Log, report.log, false);
+            T.PrintComparedLogs(board.Log, report.log, false);
             print("");
             PrintSim(board.CheckPoints, baseCheckpoints);
         end

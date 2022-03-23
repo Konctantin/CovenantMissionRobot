@@ -17,4 +17,4 @@ VM/GarrAutoBoard.lua
 UI/LogsCollector.lua
 UI/InfoFrame.lua
 
-CovenantMissionRobot.lua
+main.lua

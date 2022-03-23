@@ -1,5 +1,6 @@
 *.sql
 *.lua
+*.zip
 
 !VenturePlan_000.lua
 !CovenantMissionRobot_000.lua
