@@ -19,7 +19,7 @@ local HELPER_POINTS = {
     [10]= { x= -65, y= 25, alignment="TOP" },
     [11]= { x=  65, y= 25, alignment="TOP" },
     [12]= { x= 190, y= 25, alignment="TOP" },
-}
+};
 
 local function CreateIconButton(parent, size, texture, tooltip)
 
@@ -112,13 +112,24 @@ end
 
 local function ShowMissionID(place, missionInf)
     if not place.MissionIdLabel then
-        local lable = place:CreateFontString("missionIdLabel", "OVERLAY", "GameFontNormal");
-        lable:ClearAllPoints();
-        lable:SetSize(60, 30);
-        lable:SetPoint("BOTTOMRIGHT", -30, -30);
-        place.MissionIdLabel = lable;
+        local label = place:CreateFontString("missionIdLabel", "OVERLAY", "GameFontNormal");
+        label:ClearAllPoints();
+        label:SetSize(60, 30);
+        label:SetPoint("BOTTOMRIGHT", -30, -30);
+        place.MissionIdLabel = label;
     end
     place.MissionIdLabel:SetText("ID: "..tostring(missionInf.missionID));
+end
+
+local function ShowRoundCount(place, rounds)
+    if not place.RoundCountLabel then
+        local label = place:CreateFontString("roundCountLabel", "OVERLAY", "GameFontNormal");
+        label:ClearAllPoints();
+        label:SetSize(60, 30);
+        label:SetPoint("BOTTOMRIGHT", -30, 70);
+        place.RoundCountLabel = label;
+    end
+    place.RoundCountLabel:SetText("Rounds: "..tostring(rounds));
 end
 
 local function Simulate(place)
@@ -129,6 +140,8 @@ local function Simulate(place)
     if #missionInf.followers > 0 then
         local board = T.GarrAutoBoard:New(missionInf);
         board:Run();
+
+        ShowRoundCount(place, board.Round);
 
         for i = 0, 12 do
             local u = board.Board[i];

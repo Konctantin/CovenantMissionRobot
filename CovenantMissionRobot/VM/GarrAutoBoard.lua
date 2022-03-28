@@ -10,8 +10,7 @@ local table_insert = _G.table.insert;
 local table_sort   = _G.table.sort;
 local table_remove = _G.table.remove;
 
-local UseSimpleRounding = T.UseSimpleRounding;
-local PREDEFINED_POINTS = T.PREDEFINED_POINTS;
+local UseSimpleRounding = true;
 local GarrAutoCobatant  = T.GarrAutoCobatant;
 local TargetManager     = T.TargetManager;
 
@@ -56,16 +55,16 @@ local function Extend(value)
     local lo = m % 2^-24;
     local a = lo >= 2^-25 and (lo > 2^-25 or m % 2^-23 >= 2^-24) and 2^-24 or 0;
     local rv = (m - lo + a) * 2^e;
+
     local result = neg and -rv or rv;
 
     return result;
 end
 
 local function RoundAttack(points, attack)
-    local up = PREDEFINED_POINTS[points] or Extend(points);
-    local val = attack * up;
+    local val = attack * points;
     local val2 = Extend(val);
-    local result = val2 - val2 % 1;
+    local result = val2 - (val2 % 1);
     return result;
 end
 
@@ -372,7 +371,7 @@ function GarrAutoBoard:ManageAurasForUnit(sourceUnit)
                 local removed = { };
                 for u = 0, 12 do
                     local targetUnit = self.Board[u];
-                    if targetUnit then
+                    if targetUnit and targetUnit.CurHP > 0 then
                         local removedTargetInfo = self:ManageAuras(targetUnit, sourceUnit, spell, effect);
                         for _, ti in ipairs(removedTargetInfo) do
                             table_insert(removed, ti);
@@ -436,18 +435,19 @@ end
 function GarrAutoBoard:OnTakeDamage(sourceUnit, spell, effect, eventTargetInfo)
     local targetUnit = self.Board[eventTargetInfo.BoardIndex];
     local reflAura = targetUnit.ReflectAura;
-    if effect.IsDamage and targetUnit and targetUnit.CurHP > 0 and reflAura then
-        local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, spell, reflAura, true);
-        -- can be mele or range
-        local logEventType = GetLogEventType(effect);
-        self:AddEvent(reflAura, effect, logEventType, targetUnit.BoardIndex, { reflTargetInfo });
-        self:OnTakeDamage(sourceUnit, spell, reflAura, reflTargetInfo);
-    end
 
     -- unit died
     if eventTargetInfo.NewHP == 0 then
         self:OnDie(sourceUnit, targetUnit, spell, effect, eventTargetInfo)
         self:CheckMissionOver();
+    end
+
+    if effect.IsDamage and targetUnit and reflAura then
+        local reflTargetInfo = self:CastSpellEffect(targetUnit, sourceUnit, spell, reflAura, true);
+        -- can be mele or range
+        local logEventType = GetLogEventType(effect);
+        self:AddEvent(reflAura, effect, logEventType, targetUnit.BoardIndex, { reflTargetInfo });
+        self:OnTakeDamage(sourceUnit, spell, reflAura, reflTargetInfo);
     end
 end
 
@@ -503,19 +503,17 @@ end
 function GarrAutoBoard:ApplyPassiveAura(turnOrder)
     for _, boardIndex in ipairs(turnOrder) do
         local sourceUnit = self.Board[boardIndex];
-        if sourceUnit then
-            for _, spell in ipairs(sourceUnit.Spells) do
-                if spell.IsPassive then
-                    for _, effect in ipairs(spell.Effects) do
-                        local targetInfo = { };
-                        local targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, -1);
-                        for _, targetIndex in ipairs(targetIndexes) do
-                            local targetUnit = self.Board[targetIndex];
-                            local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
-                            table_insert(targetInfo, eventTargetInfo);
-                        end
-                        self:AddEvent(spell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
+        for _, spell in ipairs(sourceUnit.Spells) do
+            if spell.IsPassive then
+                for _, effect in ipairs(spell.Effects) do
+                    local targetInfo = { };
+                    local targetIndexes = self:GetTargets(sourceUnit, effect.TargetType, -1);
+                    for _, targetIndex in ipairs(targetIndexes) do
+                        local targetUnit = self.Board[targetIndex];
+                        local eventTargetInfo = self:CastSpellEffect(sourceUnit, targetUnit, spell, effect, false);
+                        table_insert(targetInfo, eventTargetInfo);
                     end
+                    self:AddEvent(spell, effect, ET_ApplyAura, sourceUnit.BoardIndex, targetInfo);
                 end
             end
         end

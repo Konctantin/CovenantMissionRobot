@@ -13,6 +13,16 @@ local blzEventType = {
     [9] = "Die",
 };
 
+local lpad = function(str, len, char)
+    if char == nil then char = ' ' end
+    return str .. string.rep(char, len - #str);
+end
+
+local rpad = function(str, len, char)
+    if char == nil then char = ' ' end
+    return string.rep(char, len - #str) .. str;
+end
+
 local function CompareTypes(t1,t2)
     return (t1==t2) or (t1 >=0 and t1 <= 3) and (t2 >= 0 and t2 <= 3);
 end
@@ -43,7 +53,7 @@ local function PrintComparedLogs(sim, log)
                 event2.casterBoardIndex or -2,
                 event1.spellID or 0,
                 event2.spellID or 0,
-                event2.effectIndex or -1,
+                event1.effectIndex or -1,
                 event2.effectIndex or -1,
                 blzEventType[event1.type] or "   ",
                 blzEventType[event2.type] or "   "
@@ -62,15 +72,15 @@ local function PrintComparedLogs(sim, log)
                     and target1.NewHP == target2.newHealth
                     and (target1.Points or 0) == (target2.points or 0);
 
-                local targetInf = string.format(" -> Target: %02i/%02i, Old: %05i/%05i, New: %05i/%05i, Points: %05i/%05i",
+                local targetInf = string.format(" -> Target: %02i/%02i, Old: %s/%s, New: %s/%s, Points: %s/%s",
                     target1.BoardIndex or -2,
                     target2.boardIndex or -2,
-                    target1.OldHP or 0,
-                    target2.oldHealth or 0,
-                    target1.NewHP or 0,
-                    target2.newHealth or 0,
-                    target1.Points or 0,
-                    target2.points or 0
+                    rpad(tostring(target1.OldHP or 0), 5),
+                    rpad(tostring(target2.oldHealth or 0), 5),
+                    rpad(tostring(target1.NewHP or 0), 5),
+                    rpad(tostring(target2.newHealth or 0), 5),
+                    rpad(tostring(target1.Points or 0), 4),
+                    rpad(tostring(target2.points or 0), 4)
                 );
 
                 print(casterInf..targetInf, ((casterOk and targetOk) and "" or ">>> FAIL!"))

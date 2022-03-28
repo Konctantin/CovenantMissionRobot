@@ -49,11 +49,9 @@ local function SaveCombatLog(missionID, canComplete, success, bonusRollSuccess, 
         if T.IsDebug then
             print(string.format("Mission %i log was stored", missionID));
         end
-    else
-        if T.IsDebug then
-            CMR_MISSIONS.OK[missionID] = (CMR_MISSIONS.OK[missionID] or 0) + 1;
-            print(string.format("|cff00ff00Mission %i simulation is succesfull!|r", missionID));
-        end
+    elseif T.IsDebug then
+        CMR_MISSIONS.OK[missionID] = (CMR_MISSIONS.OK[missionID] or 0) + 1;
+        print(string.format("|cff00ff00Mission %i simulation is succesfull!|r", missionID));
     end
 end
 

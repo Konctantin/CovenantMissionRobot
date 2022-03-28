@@ -51,12 +51,12 @@ round 5 - aura bug, simulation: true
 
 local function PrintSim(simCp, blzCp)
     for r = 0, math.max(#simCp, #blzCp) do
-        local simRound, blzRound = simCp[r], blzCp[r];
+        local simRound, blzRound = simCp[r] or {}, blzCp[r] or {};
         local units = {};
         local isok = true;
         for i = 0, 12 do
             if simRound[i] or blzRound[i] then
-                table.insert(units, string.format("%i(%i/%i)", i, simRound[i] or 0, blzRound[i] or 0));
+                table.insert(units, string.format("%i(%i/%i)", i, (simRound[i] or 0), (blzRound[i] or 0)));
                 if (simRound[i] or -1) ~= (blzRound[i] or -1) then
                     isok = false;
                 end

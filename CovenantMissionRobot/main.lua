@@ -1,7 +1,8 @@
-local _, T = ...;
+local addonName, T = ...;
+_G[addonName] = T; -- make it public
 
 local Events = { };
-local MainFrame = CreateFrame("Frame");
+local frame = CreateFrame("Frame");
 
 T.L = function(text)
     return T.Translate and T.Translate[text] or text;
@@ -9,6 +10,11 @@ end
 
 local function HookShowMission(...)
     T.ShowInfoFrame();
+    return ...;
+end
+
+local function HookShowFollower(...)
+    T.InitFollowerHelper();
     return ...;
 end
 
@@ -20,6 +26,7 @@ end
 local function RegisterHooks()
     hooksecurefunc(CovenantMissionFrame, "InitiateMissionCompletion", HookShowMission);
     hooksecurefunc(CovenantMissionFrame, "UpdateAllyPower", HookShowMission);
+    hooksecurefunc(CovenantMissionFrame.FollowerTab, "ShowFollower", HookShowFollower);
     --hooksecurefunc(C_Garrison, "AddFollowerToMission", HookShowMission);
 
     hooksecurefunc(CovenantMissionFrame, "CloseMission", HookCloseMission);
@@ -29,10 +36,10 @@ end
 
 function Events.ADDON_LOADED(addon)
     if addon == "Blizzard_GarrisonUI" then
-        if not MainFrame.IsLoaded then
+        if not frame.IsLoaded then
             T.ApplySpellFixes();
             RegisterHooks();
-            MainFrame.IsLoaded = true;
+            frame.IsLoaded = true;
         end
     end
 end
@@ -79,11 +86,10 @@ local function ProcessEvents(_, event, ...)
 end
 
 for event in pairs(Events) do
-    MainFrame:RegisterEvent(event);
-    --print("reg", event)
+    frame:RegisterEvent(event);
 end
 
-MainFrame:SetScript("OnEvent", ProcessEvents);
-MainFrame:Show();
+frame:SetScript("OnEvent", ProcessEvents);
+frame:Show();
 
-T.MainFrame = MainFrame;
+T.MainFrame = frame;

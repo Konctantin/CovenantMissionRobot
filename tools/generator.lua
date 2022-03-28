@@ -143,30 +143,12 @@ local function Extend(value)
     return result;
 end
 
-local function WritePoints(file)
-    local points = { };
-    for _, v in pairs(garrautospelleffect) do
-        local p = tonumber(v.Points);
-        if (p % 1) ~= 0 then
-            points[p] = Extend(p);
-        end
-    end
-
-    file:write("T.PREDEFINED_POINTS = {\n");
-    for k, v in sortedPairs(points) do
-        if k ~= v then
-            file:write(string.format("    [%.02f] = %s,\n", k, tonumber(v)));
-        end
-    end
-    file:write("};")
-end
-
 local function WriteSpells(file)
     file:write("T.GARR_AUTO_SPELL = {\n")
     for sid, spell in sortedPairs(garrautospell) do
-        --file:write("    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
-        file:write(string.format('    [%03d] = { NameDef = "%s", Description = "%s",\n', sid, trim(spell.Name_lang), trim(spell.Description_lang)));
-        file:write(string.format("        SpellID = %03d", sid));
+        file:write("    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
+        --file:write(string.format('    [%03d] = { NameDef = "%s", Description = "%s",\n', sid, trim(spell.Name_lang), trim(spell.Description_lang)));
+        file:write(string.format("    [%03d] = { SpellID = %03d", sid, sid));
         file:write(string.format(", Cooldown = %s", spell.Cooldown));
         file:write(string.format(", Duration = %s", spell.Duration));
         file:write(string.format(", Flags = %s", spell.Flags));
@@ -184,6 +166,7 @@ local function WriteSpells(file)
                 file:write(string.format(", Flags = 0x%02x", tonumber(effect['Flags'])));
                 file:write(string.format(", Period = %s", effect.Period));
                 file:write(string.format(", Points = %s", effect.Points));
+                file:write(string.format(", PointsE = %s", Extend(tonumber(effect.Points))));
                 file:write(" },\n");
             end
         end
@@ -300,9 +283,6 @@ local file = io.open("CovenantMissionRobot/VM/Tables.g.lua", "w");
 file:write(HEADER);
 
 WritePassiveSpells(file);
-file:write("\n\n");
-
-WritePoints(file);
 file:write("\n\n");
 
 WriteSpells(file);
