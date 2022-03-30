@@ -125,7 +125,7 @@ local function ShowRoundCount(place, rounds)
     if not place.RoundCountLabel then
         local label = place:CreateFontString("roundCountLabel", "OVERLAY", "GameFontNormal");
         label:ClearAllPoints();
-        label:SetSize(60, 30);
+        label:SetSize(70, 30);
         label:SetPoint("BOTTOMRIGHT", -30, 70);
         place.RoundCountLabel = label;
     end

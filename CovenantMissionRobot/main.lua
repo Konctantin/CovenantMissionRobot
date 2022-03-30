@@ -80,8 +80,9 @@ function Events.GARRISON_FOLLOWER_ADDED(...)
 end
 
 local function ProcessEvents(_, event, ...)
-    if Events[event] then
-        Events[event](...);
+    local handler = Events[event];
+    if handler then
+        handler(...);
     end
 end
 

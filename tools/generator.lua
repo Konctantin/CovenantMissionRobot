@@ -130,24 +130,10 @@ local function WritePassiveSpells(file)
     file:write("};");
 end
 
-local function Extend(value)
-    local neg = value < 0;
-    local mantis, exp = math.frexp(value);
-    mantis = neg and -mantis or mantis;
-
-    local lo = mantis % 2^-24;
-    local a = lo >= 2^-25 and (lo > 2^-25 or mantis % 2^-23 >= 2^-24) and 2^-24 or 0;
-    local rv = (mantis - lo + a) * 2^exp;
-
-    local result = neg and -rv or rv;
-    return result;
-end
-
 local function WriteSpells(file)
     file:write("T.GARR_AUTO_SPELL = {\n")
     for sid, spell in sortedPairs(garrautospell) do
         file:write("    -- "..trim(trim(spell.Name_lang)..': '..spell.Description_lang)..'\n');
-        --file:write(string.format('    [%03d] = { NameDef = "%s", Description = "%s",\n', sid, trim(spell.Name_lang), trim(spell.Description_lang)));
         file:write(string.format("    [%03d] = { SpellID = %03d", sid, sid));
         file:write(string.format(", Cooldown = %s", spell.Cooldown));
         file:write(string.format(", Duration = %s", spell.Duration));
@@ -166,11 +152,10 @@ local function WriteSpells(file)
                 file:write(string.format(", Flags = 0x%02x", tonumber(effect['Flags'])));
                 file:write(string.format(", Period = %s", effect.Period));
                 file:write(string.format(", Points = %s", effect.Points));
-                file:write(string.format(", PointsE = %s", Extend(tonumber(effect.Points))));
                 file:write(" },\n");
             end
         end
-        file:write("    } },\n");
+        file:write("    } },\n\n");
     end
     file:write("};")
 end

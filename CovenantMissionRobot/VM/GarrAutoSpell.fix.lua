@@ -62,6 +62,20 @@ local TargetTypes = {
     [24] = "Env all allies",
 };
 
+-- from vp
+local function ExtendF32(value)
+    local neg = value < 0;
+    local mantis, exp = math.frexp(value);
+    mantis = neg and -mantis or mantis;
+
+    local lo = mantis % 2^-24;
+    local a = lo >= 2^-25 and (lo > 2^-25 or mantis % 2^-23 >= 2^-24) and 2^-24 or 0;
+    local rv = (mantis - lo + a) * 2^exp;
+
+    local result = neg and -rv or rv;
+    return result;
+end
+
 local function MakeSomePresetupFilds()
     for s, spell in pairs(T.GARR_AUTO_SPELL) do
         spell.IsAutoAttack = T.AUTO_ATTACK_SPELLS[s] == 1;
@@ -75,8 +89,6 @@ local function MakeSomePresetupFilds()
         for _, effect in ipairs(spell.Effects) do
             local ef = effect.Effect;
             local tt = effect.TargetType;
-
-            effect.HandlerName = EffectHandlers[ef];
 
             -- Random effects
             if tt == 19 or tt == 20 or tt == 21 then
@@ -99,16 +111,23 @@ local function MakeSomePresetupFilds()
             effect.IsMaxHPMultilier = ef == 18;
             effect.UsePoints        = ef == 12 -- DamageDealtMultiplier
                                    or ef == 14 -- DamageTakenMultiplier
-                                   or ef == 15 -- Reflect
-                                   or ef == 16;-- Reflect_2
+                                   or ef == 15 -- Reflect (only 1 effect, mabe it's mistake, actually 16)
+                                   or ef == 16;-- Reflect
 
             -- Flags properties
             effect.FirstTick = bit.band(effect.Flags, 2) > 0;
             effect.UseAttackForPoint = bit.band(effect.Flags, 1) > 0;
 
+            -- it needs some tests
+            effect.PointsF32 = ExtendF32(effect.Points);
+
+            -- only for development, i don't remember all these numbers
             if T.IsDebug then
                 effect.EffectName = EffectTypes[ef] or "<unk>";
                 effect.TargetTypeName = TargetTypes[tt] or "<unk>";
+
+                -- todo: mabe I'll use handler for every effect
+                effect.HandlerName = EffectHandlers[ef];
             end
         end
     end
@@ -136,7 +155,7 @@ local function ApplySpellFixes()
     T.GARR_AUTO_SPELL[122].Effects = { }; -- does'nt work mission 2186 (Хихикающий трикстер)
 
     -- Polished Ice Barrier: A frozen reflective shield forms which deals $s1 Frost damage to anyone attacking it for three turns.
-    T.GARR_AUTO_SPELL[174].Effects[1].Points = 0.3; -- old 0.4
+    --T.GARR_AUTO_SPELL[174].Effects[1].Points = 0.3; -- old 0.4
 
     -- Toxic Dispersal: Deals $s1 Nature damage each round to all enemies and heals all allies for $s2.
     T.GARR_AUTO_SPELL[191].Effects[1].Points = 1; -- old 0.2
