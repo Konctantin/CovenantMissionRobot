@@ -13,11 +13,6 @@ local function HookShowMission(...)
     return ...;
 end
 
-local function HookShowFollower(...)
-    T.InitFollowerHelper();
-    return ...;
-end
-
 local function HookCloseMission(...)
     collectgarbage("collect");
     return ...;
@@ -26,7 +21,6 @@ end
 local function RegisterHooks()
     hooksecurefunc(CovenantMissionFrame, "InitiateMissionCompletion", HookShowMission);
     hooksecurefunc(CovenantMissionFrame, "UpdateAllyPower", HookShowMission);
-    hooksecurefunc(CovenantMissionFrame.FollowerTab, "ShowFollower", HookShowFollower);
     --hooksecurefunc(C_Garrison, "AddFollowerToMission", HookShowMission);
 
     hooksecurefunc(CovenantMissionFrame, "CloseMission", HookCloseMission);

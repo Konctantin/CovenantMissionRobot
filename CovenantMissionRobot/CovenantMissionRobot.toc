@@ -16,6 +16,5 @@ VM/GarrAutoBoard.lua
 
 UI/LogsCollector.lua
 UI/InfoFrame.lua
-UI/FollowerHelperFrame.lua
 
 main.lua
