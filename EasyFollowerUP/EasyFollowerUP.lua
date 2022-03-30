@@ -5,32 +5,20 @@ local UP_ITEMS = {
     188655, -- Crystalline Memory Repository
     188656, -- Fractal Thoughtbinder
     188657, -- Mind-Expanding Prism
-    186472  -- Wisps of Memory
+    --186472  -- Wisps of Memory
 };
 
 local Events = { };
 local frame = CreateFrame("Frame");
 
 local function CreateUPButton(place, itemID, xpos, frameName)
-    local followerID = place.followerID;
-    if not followerID then
-        return;
-    end
-
     local buttonName = "UpButton_"..tostring(itemID);
-    local itemName, itemLink = GetItemInfo(itemID);
-    if not itemName then
-        if place[buttonName] then
-            place[buttonName]:SetEnabled(false);
-        end
-        return;
-    end
-
     if not place[buttonName] then
+        local itemName, itemLink = GetItemInfo(itemID);
         local macrotext = "/use "..itemName.."\n/run C_Garrison.CastSpellOnFollower("..frameName..".FollowerTab.followerID)";
 
         local button = CreateFrame("Button", buttonName, place, "SecureActionButtonTemplate,ActionButtonTemplate");
-        button:SetSize(48, 48);
+        button:SetSize(32, 32);
         button:SetPoint("BOTTOMRIGHT", xpos, 40);
 
         local icon = button:CreateTexture(nil, "ARTWORK");
@@ -57,7 +45,7 @@ local function CreateUPButton(place, itemID, xpos, frameName)
     local count = GetItemCount(itemID);
 
     local level = 60;
-    local missionCompleteInfo = C_Garrison.GetFollowerMissionCompleteInfo(followerID);
+    local missionCompleteInfo = C_Garrison.GetFollowerMissionCompleteInfo(place.followerID);
     if missionCompleteInfo then
         level = missionCompleteInfo.level;
     end
@@ -69,62 +57,68 @@ local function CreateUPButton(place, itemID, xpos, frameName)
 end
 
 local function UpdateAllButtons(place, frameName)
-    if place then
+    if place and place.followerID then
         local x = -30;
         for _, itemID in ipairs(UP_ITEMS) do
             CreateUPButton(place, itemID, x, frameName);
-            x = x - 60;
+            x = x - 40;
         end
     end
 end
 
-local function Setup(place, frameName)
+local function Setup(place)
     if not place then
         return;
     end
 
-    if not place:GetParent() or place:GetParent().garrTypeID ~= 111 then
+    local parent = place:GetParent();
+    local frameName = parent:GetName();
+
+    local followerID = place.followerID;
+    if not followerID then
         return;
     end
 
-    if not place.CounterFrame then
-        local frame = CreateFrame("Frame");
-        frame:RegisterEvent("BAG_UPDATE");
-        frame:RegisterEvent("BAG_NEW_ITEMS_UPDATED");
-        frame:RegisterEvent("GARRISON_FOLLOWER_XP_CHANGED");
-        --frame:RegisterEvent("GARRISON_FOLLOWER_LEVEL_UP");
-        frame:SetScript("OnEvent", function() UpdateAllButtons(place, frameName) end);
-        frame:Show();
-        place.CounterFrame = frame;
+    local followerInfo = C_Garrison.GetFollowerInfo(followerID)
+    if not followerInfo or followerInfo.followerTypeID ~= 123 then
+        return;
     end
 
     UpdateAllButtons(place, frameName);
+
+    C_Timer.After(0.3, function()
+        if parent and not parent.CounterFrame then
+            local frame = CreateFrame("Frame");
+            frame:RegisterEvent("BAG_UPDATE");
+            frame:RegisterEvent("BAG_NEW_ITEMS_UPDATED");
+            frame:RegisterEvent("GARRISON_FOLLOWER_XP_CHANGED");
+            --frame:RegisterEvent("GARRISON_FOLLOWER_LEVEL_UP");
+            frame:SetScript("OnEvent", function() UpdateAllButtons(place, frameName) end);
+            frame:Show();
+            parent.CounterFrame = frame;
+        end
+    end);
 end
 
-local function ShowMissionFollowerTabHook(self, ...)
-    Setup(self, "CovenantMissionFrame");
+local function ShowHook(self)
+    Setup(self);
 end
 
-local function ShowLandingFollowerTabHook(self, ...)
-    Setup(self, "GarrisonLandingPage");
-end
-
-local function HideFollowerTabHook(self, ...)
-    if self.CounterFrame then
-        self.CounterFrame:UnregisterAllEvents();
-        self.CounterFrame = nil;
+local function HideHook(self)
+    local parent = self:GetParent();
+    if parent and parent.CounterFrame then
+        parent.CounterFrame:UnregisterAllEvents();
+        parent.CounterFrame = nil;
     end
 end
 
 function Events.ADDON_LOADED(addon)
-    if addon == "Blizzard_GarrisonUI" then
-        if not frame.IsLoaded then
-            hooksecurefunc(CovenantMissionFrame.FollowerTab, "ShowFollower", ShowMissionFollowerTabHook);
-            hooksecurefunc(CovenantMissionFrame.FollowerTab, "Hide", HideFollowerTabHook);
-            hooksecurefunc(GarrisonLandingPage.FollowerTab, "ShowFollower", ShowLandingFollowerTabHook);
-            hooksecurefunc(GarrisonLandingPage.FollowerTab, "Hide", HideFollowerTabHook);
-            frame.IsLoaded = true;
-        end
+    if addon == "Blizzard_GarrisonUI" and not frame.IsLoaded then
+        hooksecurefunc(CovenantMissionFrame.FollowerTab, "ShowFollower", ShowHook);
+        hooksecurefunc(CovenantMissionFrame.FollowerTab, "Hide", HideHook);
+        hooksecurefunc(GarrisonLandingPage.FollowerTab, "ShowFollower", ShowHook);
+        hooksecurefunc(GarrisonLandingPage.FollowerTab, "Hide", HideHook);
+        frame.IsLoaded = true;
     end
 end
 
