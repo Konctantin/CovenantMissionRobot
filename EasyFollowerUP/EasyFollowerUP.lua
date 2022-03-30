@@ -1,6 +1,11 @@
 local addonName, T = ...;
 _G[addonName] = T; -- make it public
 
+local BUTTON_SIZE  = 32;
+local BUTTON_Y_POS = 40;
+local BUTTON_X_POS =-30;
+local BUTTON_SHIST = 40;
+
 local UP_ITEMS = {
     188655, -- Crystalline Memory Repository
     188656, -- Fractal Thoughtbinder
@@ -18,8 +23,8 @@ local function CreateUPButton(place, itemID, xpos, frameName)
         local macrotext = "/use "..itemName.."\n/run C_Garrison.CastSpellOnFollower("..frameName..".FollowerTab.followerID)";
 
         local button = CreateFrame("Button", buttonName, place, "SecureActionButtonTemplate,ActionButtonTemplate");
-        button:SetSize(32, 32);
-        button:SetPoint("BOTTOMRIGHT", xpos, 40);
+        button:SetSize(BUTTON_SIZE, BUTTON_SIZE);
+        button:SetPoint("BOTTOMRIGHT", xpos, BUTTON_Y_POS);
 
         local icon = button:CreateTexture(nil, "ARTWORK");
         icon:SetAllPoints();
@@ -58,10 +63,10 @@ end
 
 local function UpdateAllButtons(place, frameName)
     if place and place.followerID then
-        local x = -30;
+        local xpos = BUTTON_X_POS;
         for _, itemID in ipairs(UP_ITEMS) do
-            CreateUPButton(place, itemID, x, frameName);
-            x = x - 40;
+            CreateUPButton(place, itemID, xpos, frameName);
+            xpos = xpos - BUTTON_SHIST;
         end
     end
 end
