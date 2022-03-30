@@ -94,17 +94,48 @@ local function CreateButtons(place)
 end
 
 local function SetupHelpControls(place)
+    local function OnEnter(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT");
+        GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMRIGHT", 0, 0);
+
+        -- todo: more info and something else
+        GameTooltip_AddNormalLine(GameTooltip, "|cff6f0a9a Info by rounds:|r");
+        GameTooltip:AddLine(" ");
+        for i, v in ipairs(self.inf) do
+            local r,g,b = 0,1,0;
+            if v.Cur == 0 then
+                r,g,b = 1,0,0;
+            end
+            GameTooltip:AddDoubleLine(i, string.format("%i / %i", v.Cur, v.Max), 0, 0.5, 0, r,g,b);
+         end
+
+        GameTooltip:Show();
+    end
+
+    local function OnLeave()
+        GameTooltip_Hide();
+    end
+
     for i, point in pairs(HELPER_POINTS) do
         local name = "inf"..tostring(i);
         local helpLabel = place[name];
         if not helpLabel then
-            helpLabel = place:CreateFontString(name, "OVERLAY", "GameFontNormal");
+
+            helpLabel = CreateFrame("Frame", name, place);
             helpLabel:ClearAllPoints();
             helpLabel:SetSize(160, 30);
             helpLabel:SetPoint(point.alignment, point.x, point.y);
+
+            helpLabel.text = helpLabel:CreateFontString(name, "OVERLAY", "GameFontNormal");
+            helpLabel.text:SetAllPoints();
+
+            helpLabel:SetScript('OnEnter', OnEnter)
+            helpLabel:SetScript('OnLeave', OnLeave)
+
+            helpLabel.inf = {};
             place[name] = helpLabel;
         end
-        helpLabel:SetText("");
+        helpLabel.text:SetText("");
     end
 
     CreateButtons(place);
@@ -150,7 +181,13 @@ local function Simulate(place)
                 --local cmin, cmax = board.MinHP[i], board.MaxHP[i];
                 local color = u.CurHP == 0 and C_RED or C_GREEN;
                 local percent = u.CurHP > 0 and string.format(" (%i%%)", (u.CurHP*100)/u.MaxHP) or "";
-                helpLabel:SetText(string.format("|c%s%i/%i%s|r", color, u.CurHP, u.MaxHP, percent));
+                helpLabel.text:SetText(string.format("|c%s%i/%i%s|r", color, u.CurHP, u.MaxHP, percent));
+
+                helpLabel.inf = {};
+                for c = 0, #board.CheckPoints do
+                    local cp = board.CheckPoints[c];
+                    table.insert(helpLabel.inf, { Max = u.MaxHP, Cur = cp[i] });
+                end
             end
         end
     end

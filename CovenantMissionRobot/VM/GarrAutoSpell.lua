@@ -96,7 +96,8 @@ function GarrAutoAura:New(spell, effect, sourceIndex, value)
     obj.CurrentPeriod = math_max(obj.Period, 0);
 
     self.__index = self;
-    return setmetatable(obj, self);
+    setmetatable(obj, self);
+    return obj;
 end
 
 function GarrAutoAura:DecRestTime()
