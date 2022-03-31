@@ -94,7 +94,12 @@ local function Setup(place)
             frame:RegisterEvent("BAG_NEW_ITEMS_UPDATED");
             frame:RegisterEvent("GARRISON_FOLLOWER_XP_CHANGED");
             --frame:RegisterEvent("GARRISON_FOLLOWER_LEVEL_UP");
-            frame:SetScript("OnEvent", function() UpdateAllButtons(place, frameName) end);
+            frame:SetScript("OnEvent",
+                function()
+                    if place and frameName and place.followerID then
+                        UpdateAllButtons(place, frameName)
+                    end
+                end);
             frame:Show();
             parent.CounterFrame = frame;
         end

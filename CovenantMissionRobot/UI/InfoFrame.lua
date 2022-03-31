@@ -99,14 +99,14 @@ local function SetupHelpControls(place)
         GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMRIGHT", 0, 0);
 
         -- todo: more info and something else
-        GameTooltip_AddNormalLine(GameTooltip, "|cff6f0a9a Info by rounds:|r");
+        GameTooltip_AddNormalLine(GameTooltip, "Unit HP History");
         GameTooltip:AddLine(" ");
         for i, v in ipairs(self.inf) do
             local r,g,b = 0,1,0;
-            if v.Cur == 0 then
+            if v.CurHP == 0 then
                 r,g,b = 1,0,0;
             end
-            GameTooltip:AddDoubleLine(i, string.format("%i / %i", v.Cur, v.Max), 0, 0.5, 0, r,g,b);
+            GameTooltip:AddDoubleLine(i, string.format("%i / %i", v.CurHP, v.MaxHP), 0, 0.5, 0, r,g,b);
          end
 
         GameTooltip:Show();
@@ -186,7 +186,7 @@ local function Simulate(place)
                 helpLabel.inf = {};
                 for c = 0, #board.CheckPoints do
                     local cp = board.CheckPoints[c];
-                    table.insert(helpLabel.inf, { Max = u.MaxHP, Cur = cp[i] });
+                    table.insert(helpLabel.inf, { MaxHP = u.MaxHP, CurHP = cp[i] });
                 end
             end
         end
