@@ -1,34 +1,25 @@
-﻿$WOW_INSTALL_KEY = "HKLM:\SOFTWARE\WOW6432Node\Blizzard Entertainment\World of Warcraft"
-
+﻿$scriptPath = split-path -parent $MyInvocation.MyCommand.ScriptBlock.File
+$WOW_INSTALL_KEY = "HKLM:\SOFTWARE\WOW6432Node\Blizzard Entertainment\World of Warcraft"
 $WOW_DIR = (Get-ItemProperty -Path $WOW_INSTALL_KEY -Name "InstallPath").InstallPath
 $WOW_DIR = (Get-Item $WOW_DIR).Parent.FullName
 
-$ADDON = "CovenantMissionRobot"
-$ADDON_FOLDER = Join-Path -Path $WOW_DIR -ChildPath "_retail_\Interface\AddOns\$ADDON"
+$ADDON_LIST = Get-ChildItem -Path $scriptPath -Directory -Force -ErrorAction SilentlyContinue
 
-Write-Output $ADDON_FOLDER
+Function CopyAddon($addonFolder){
+    $addonName = $addonFolder.Name;
+    $addonSrcFullPath = $addonFolder.FullName
+	$addonDstFullPath = Join-Path -Path $WOW_DIR -ChildPath "_retail_\Interface\AddOns\$addonName"
 
-$scriptPath = split-path -parent $MyInvocation.MyCommand.Definition
+	Write-Output "Cleanup addon path: $addonDstFullPath"
+	Remove-Item -LiteralPath $addonDstFullPath -Force -Recurse
 
-Write-Output "Cleanup addon path: $ADDON_FOLDER"
-Remove-Item -LiteralPath $ADDON_FOLDER -Force -Recurse
+	Write-Output "Copy addon from $addonSrcFullPath to $addonDstFullPath"
+	Copy-Item -Path $addonSrcFullPath -Filter "*.*" -Recurse -Destination $addonDstFullPath -Container
+}
 
-Write-Output "Copy addon from $scriptPath\$ADDON to $ADDON_FOLDER"
-Copy-Item -Path $scriptPath\$ADDON -Filter "*.*" -Recurse -Destination $ADDON_FOLDER -Container
-
-
-
-
-
-$ADDON = "EasyFollowerUP"
-$ADDON_FOLDER = Join-Path -Path $WOW_DIR -ChildPath "_retail_\Interface\AddOns\$ADDON"
-
-Write-Output $ADDON_FOLDER
-
-$scriptPath = split-path -parent $MyInvocation.MyCommand.Definition
-
-Write-Output "Cleanup addon path: $ADDON_FOLDER"
-Remove-Item -LiteralPath $ADDON_FOLDER -Force -Recurse
-
-Write-Output "Copy addon from $scriptPath\$ADDON to $ADDON_FOLDER"
-Copy-Item -Path $scriptPath\$ADDON -Filter "*.*" -Recurse -Destination $ADDON_FOLDER -Container
+$List = ("CovenantMissionRobot", "VenturePlan")
+foreach ($addonFolder in $ADDON_LIST) {
+    if ($List -contains $addonFolder.Name) {
+	    CopyAddon $addonFolder
+    }
+}

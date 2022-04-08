@@ -106,7 +106,17 @@ local function SetupHelpControls(place)
             if v.CurHP == 0 then
                 r,g,b = 1,0,0;
             end
-            GameTooltip:AddDoubleLine(i, string.format("%i / %i", v.CurHP, v.MaxHP), 0, 0.5, 0, r,g,b);
+            local deltaStr = "";
+            if i > 1 then
+                local delta = self.inf[i-1].CurHP - self.inf[i].CurHP;
+                if delta > 0 then
+                    deltaStr = string.format("-%i", math.abs(delta));
+                elseif delta < 0 then
+                    deltaStr = string.format("+%i", math.abs(delta));
+                end
+            end
+
+            GameTooltip:AddDoubleLine(i, string.format("%s %i / %i", deltaStr, v.CurHP, v.MaxHP), 0, 0.5, 0, r,g,b);
          end
 
         GameTooltip:Show();
@@ -136,6 +146,7 @@ local function SetupHelpControls(place)
             place[name] = helpLabel;
         end
         helpLabel.text:SetText("");
+        helpLabel.inf = {};
     end
 
     CreateButtons(place);
