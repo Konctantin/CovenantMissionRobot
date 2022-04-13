@@ -107,7 +107,7 @@ local function parseLog(file, fileName)
     assert(type(CMR_LOGS)=="table", "Could not retrieve table 'CMR_LOGS'!");
     for mid, missionList in pairs(CMR_LOGS) do
         print(mid);
-        for i, missionLog in ipairs(missionList) do
+        for i, missionLog in ipairs(missionList.ERR) do
             local id = tostring(missionLog.id);
 
             -- header

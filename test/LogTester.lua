@@ -23,7 +23,7 @@ loadfile('VenturePlan/vs.lua')(T.Name, T);
 
 loadfile('test/utils.lua')(T.Name, T);
 
-loadfile("Logs/CovenantMissionRobot_001.lua")(T.Name, T);
+loadfile("Logs/CovenantMissionRobot.lua")(T.Name, T);
 
 --print('Simulator has bin loaded!');
 
@@ -68,32 +68,35 @@ local function PrintSim(simCp, blzCp)
 end
 
 local start = 1
-for i, report in ipairs(CMR_LOGS) do
+for mid, missionList in pairs(CMR_LOGS) do
+
     --if report.missionID == 2191 then
     --if CMR_MISSIONS and CMR_MISSIONS.ERROR and CMR_MISSIONS.ERROR[report.missionID] then
     --if i >= start and i < start+10 then
-    if report.id == '16478833362191' then
-        local isOK, baseCheckpoints = T.CreateCheckPoints(report);
+    for i, report in ipairs(missionList) do
+        --if report.id == '16478833362191' then
+            local isOK, baseCheckpoints = T.CreateCheckPoints(report);
 
-        local board = T.GarrAutoBoard:New(report);
-        board.LogEnabled = true;
+            local board = T.GarrAutoBoard:New(report);
+            board.LogEnabled = true;
 
-        print("");
-        print(string.format("№ %i LogID: %s Mission: %d HasRandom: %s Log: %s",
-            i, report.id, report.missionID, (board.HasRandomSpells and "YES" or "NO"),
-            (isOK and "OK" or "Broken!")));
-
-        board:Simulate(10);
-        local isOKSim = board:CheckSimulation(board.CheckPoints, baseCheckpoints);
-
-        if isOKSim then
-            print("Simulation: OK!")
-        else
-            T.PrintComparedLogs(board.Log, report.log, false);
             print("");
-            PrintSim(board.CheckPoints, baseCheckpoints);
-        end
-        --break;
+            print(string.format("№ %i LogID: %s Mission: %d HasRandom: %s Log: %s",
+                i, report.id, report.missionID, (board.HasRandomSpells and "YES" or "NO"),
+                (isOK and "OK" or "Broken!")));
+
+            board:Simulate(10);
+            local isOKSim = board:CheckSimulation(board.CheckPoints, baseCheckpoints);
+
+            if isOKSim then
+                print("Simulation: OK!")
+            else
+                T.PrintComparedLogs(board.Log, report.log, false);
+                print("");
+                PrintSim(board.CheckPoints, baseCheckpoints);
+            end
+            --break;
+        --end
     end
 end
 

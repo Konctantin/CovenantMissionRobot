@@ -31,15 +31,9 @@ local function SaveCombatLog(missionID, canComplete, success, bonusRollSuccess, 
     end
 
     if not CMR_LOGS then CMR_LOGS = {} end
-    if not CMR_LOGS[missionID] then CMR_LOGS[missionID] = {} end
+    if not CMR_LOGS[missionID] then CMR_LOGS[missionID] = { OK = {}, ERR = {}} end
 
     local logs = CMR_LOGS[missionID];
-
-    -- this is a test case: we'll be store only 5 logs for every mission
-    table.insert(logs, 1, logInfo);
-    while #logs > 5 do
-        table.remove(logs, #logs);
-    end
 
     local board = T.GarrAutoBoard:New(logInfo);
     board.LogEnabled = false;
@@ -48,11 +42,18 @@ local function SaveCombatLog(missionID, canComplete, success, bonusRollSuccess, 
     local simOK = board:CheckSimulation(logInfo);
 
     if not simOK then
+        table.insert(logs.ERR, 1, logInfo);
+        while #logs.ERR > 5 do
+            table.remove(logs.ERR, #logs.ERR);
+        end
         if T.IsDebug then
             print(string.format("Mission %i log was stored", missionID));
         end
     elseif T.IsDebug then
-        print(string.format("|cff00ff00Mission %i simulation is succesfull!|r", missionID));
+        if #logs.OK == 0 then
+            table.insert(logs.OK, logInfo);
+            print(string.format("|cff00ff00Mission %i simulation is succesfull!|r", missionID));
+        end
     end
 end
 
